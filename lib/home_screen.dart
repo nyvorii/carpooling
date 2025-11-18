@@ -118,11 +118,12 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             else
               ElevatedButton.icon(
-                icon: Image.network(
+                icon: const Icon(Icons.map),
+                /*Image.network(
                   'https://developers.google.com/identity/images/g-logo.png',
                   height: 24,
                   width: 24,
-                ),
+                ),*/
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black87,
