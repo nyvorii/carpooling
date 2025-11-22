@@ -24,14 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final FirebaseAuth auth = FirebaseAuth.instance;
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
       if (googleUser == null) {
         setState(() => _isLoading = false);
         return;
       }
-      final GoogleSignInAuthentication googleAuth = 
-          await googleUser.authentication;
 
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -45,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (user != null) {
         await _saveUserToFirestore(user);
-
         if (context.mounted) {
           Navigator.pushReplacement(
             context,
@@ -69,22 +67,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _saveUserToFirestore(User user) async {
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final userDocRef = firestore.collection('users').doc(user.uid);
+Future<void> _saveUserToFirestore(User user) async {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final userDocRef = firestore.collection('users').doc(user.uid);
 
-    await userDocRef.set(
-      {
-        'uid': user.uid,
-        'email': user.email,
-        'displayName': user.displayName,
-        'photoURL': user.photoURL,
-        'lastLogin': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-    debugPrint('Pomyślnie zapisano/zaktualizowano użytkownika w Firestore.');
+  final docSnapshot = await userDocRef.get();
+  String? existingCustomPhotoUrl;
+  if (docSnapshot.exists) {
+    existingCustomPhotoUrl = docSnapshot.data()?['customPhotoUrl'];
   }
+
+  await userDocRef.set(
+    {
+      'uid': user.uid,
+      'email': user.email,
+      'displayName': user.displayName,
+      'photoURL': user.photoURL,
+      if (existingCustomPhotoUrl != null) 'customPhotoUrl': existingCustomPhotoUrl,
+      'lastLogin': FieldValue.serverTimestamp(),
+    },
+    SetOptions(merge: true),
+  );
+
+  debugPrint('Pomyślnie zapisano/zaktualizowano użytkownika w Firestore.');
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -119,11 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               ElevatedButton.icon(
                 icon: const Icon(Icons.map),
-                /*Image.network(
-                  'https://developers.google.com/identity/images/g-logo.png',
-                  height: 24,
-                  width: 24,
-                ),*/
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black87,

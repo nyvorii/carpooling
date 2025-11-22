@@ -1,10 +1,7 @@
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
     id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -13,9 +10,7 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    kotlin
     buildToolsVersion = "36.1.0"
-
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -27,10 +22,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.carpooling"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -38,20 +30,13 @@ android {
     }
 
     signingConfigs {
-        // Twój własny release key
         create("release") {
             storeFile = file("../my-release-key.jks")
             storePassword = "mlekolaki"
             keyAlias = "myapp"
             keyPassword = "mlekolaki"
         }
-        // Dla debug używamy istniejącego debug config
-        getByName("debug") {
-            storeFile = file("../my-release-key.jks")
-            storePassword = "mlekolaki"
-            keyAlias = "myapp"
-            keyPassword = "mlekolaki"
-        }
+        // ⚠️ NIE MA debug!
     }
 
     buildTypes {
@@ -59,7 +44,7 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
         getByName("debug") {
-            signingConfig = signingConfigs.getByName("debug")
+            // ⚠️ debug NIE MA signingConfig – użyje domyślnego debug.keystore
         }
     }
 }
