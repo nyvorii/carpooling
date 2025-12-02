@@ -20,10 +20,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final FirebaseAuth auth = FirebaseAuth.instance;
 
-      // 1️⃣ Próba szybkiego logowania z cache
+      // 1️ Próba szybkiego logowania z cache
       GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
 
-      // 2️⃣ Jeśli brak konta w cache — otwórz UI wyboru konta
+      // 2️ Jeśli brak konta w cache — otwórz UI wyboru konta
       googleUser ??= await _googleSignIn.signIn();
       if (googleUser == null) return; // użytkownik anulował
 
@@ -37,10 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final user = auth.currentUser;
       if (user == null) return;
 
-      // 3️⃣ Zapis do Firestore w tle (minimalny)
+      // 3️ Zapis do Firestore w tle (minimalny)
       _saveUserToFirestore(user);
 
-      // 4️⃣ Przejście do MenuScreen od razu
+      // 4️ Przejście do MenuScreen od razu
       if (mounted) {
         Navigator.pushReplacement(
           context,
