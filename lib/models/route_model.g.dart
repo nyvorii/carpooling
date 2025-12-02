@@ -23,13 +23,18 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       seats: fields[3] as int,
       routePoints: (fields[4] as List).cast<LatLng>(),
       bookedSeats: fields[5] as int,
+      driverId: fields[6] as String,
+      driverName: fields[7] as String,
+      totalCost: fields[8] as double,
+      passengerIds: (fields[9] as List).cast<String>(),
+      isActive: fields[10] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, RouteModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.start)
       ..writeByte(1)
@@ -41,7 +46,17 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       ..writeByte(4)
       ..write(obj.routePoints)
       ..writeByte(5)
-      ..write(obj.bookedSeats);
+      ..write(obj.bookedSeats)
+      ..writeByte(6)
+      ..write(obj.driverId)
+      ..writeByte(7)
+      ..write(obj.driverName)
+      ..writeByte(8)
+      ..write(obj.totalCost)
+      ..writeByte(9)
+      ..write(obj.passengerIds)
+      ..writeByte(10)
+      ..write(obj.isActive);
   }
 
   @override

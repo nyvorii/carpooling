@@ -39,61 +39,68 @@ class _MapScreenState extends State<MapScreen> {
       debugPrint('Błąd pobierania trasy: ${response.body}');
     }
   }
+
   List<Polyline> _buildSavedPolylines() {
     final box = Hive.box<RouteModel>('routes');
-    return box.values.map((route) => Polyline(
-          points:  route.routePoints,
-          color: Colors.blue,
-          strokeWidth: 4,
-        )).toList();
- }
- List<Marker> _buildSavedMarkers() {
+    return box.values
+        .where((route) => route.routePoints.isNotEmpty)
+        .map((route) => Polyline(
+      points: route.routePoints,
+      color: Colors.blue,
+      strokeWidth: 4,
+    ))
+        .toList();
+  }
+
+  List<Marker> _buildSavedMarkers() {
     final box = Hive.box<RouteModel>('routes');
     List<Marker> markers = [];
     for (var route in box.values) {
-      markers.add(Marker(
-        point: route.start,
-        width: 40,
-        height: 40,
-        child: const Icon(Icons.location_on, color: Colors.green),
-      ));
-      markers.add(Marker(
-        point: route.end,
-        width: 40,
-        height: 40,
-        child: const Icon(Icons.flag, color: Colors.red),
-      ));
+      if (route.routePoints.isNotEmpty) {
+        markers.add(Marker(
+          point: route.start,
+          width: 40,
+          height: 40,
+          child: const Icon(Icons.location_on, color: Colors.green),
+        ));
+        markers.add(Marker(
+          point: route.end,
+          width: 40,
+          height: 40,
+          child: const Icon(Icons.flag, color: Colors.red),
+        ));
+      }
     }
     return markers;
- }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     appBar: AppBar(
-  title: const Text('Mapa tras'),
-  leading: IconButton(
-    icon: const Icon(Icons.arrow_back),
-    onPressed: () {
-      // Wróć do ekranu logowania i usuń wszystko z historii nawigacji
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (route) => false,
-      );
-    },
-  ),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.list),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const RoutesMenuScreen()),
-        );
-      },
-    ),
-  ],
-),
+      appBar: AppBar(
+        title: const Text('Mapa tras'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  (route) => false,
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.list),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RoutesMenuScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
@@ -121,7 +128,8 @@ class _MapScreenState extends State<MapScreen> {
           ),
           PolylineLayer(
             polylines: [
-              Polyline(points: _routePoints, strokeWidth: 4, color: Colors.blue),
+              if (_routePoints.isNotEmpty)
+                Polyline(points: _routePoints, strokeWidth: 4, color: Colors.blue),
               ..._buildSavedPolylines(),
             ],
           ),
@@ -141,7 +149,7 @@ class _MapScreenState extends State<MapScreen> {
                   height: 40,
                   child: const Icon(Icons.flag, color: Colors.red),
                 ),
-                ..._buildSavedMarkers(),
+              ..._buildSavedMarkers(),
             ],
           ),
         ],
@@ -162,6 +170,13 @@ class _MapScreenState extends State<MapScreen> {
           FloatingActionButton.extended(
             onPressed: () async {
               if (_start != null && _end != null) {
+                if (_routePoints.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Nie udało się pobrać trasy! Spróbuj ponownie.'))
+                  );
+                  return;
+                }
+
                 final newRoute = await showDialog<RouteModel>(
                   context: context,
                   builder: (context) => RouteFormDialog(
@@ -172,9 +187,8 @@ class _MapScreenState extends State<MapScreen> {
                 );
                 if (newRoute != null) {
                   final box = Hive.box<RouteModel>('routes');
-                  box.add(newRoute);
+                  await box.add(newRoute);
                   if (!mounted) return;
-                  // ignore: use_build_context_synchronously
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Trasa zapisana!')),
                   );
@@ -190,19 +204,15 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-
-      
     );
-
-    
   }
 }
 
 class RouteFormDialog extends StatefulWidget {
   final LatLng start;
   final LatLng end;
-   final List<LatLng> routePoints;
-  const RouteFormDialog({super.key, required this.start, required this.end, required this.routePoints,});
+  final List<LatLng> routePoints;
+  const RouteFormDialog({super.key, required this.start, required this.end, required this.routePoints});
 
   @override
   State<RouteFormDialog> createState() => _RouteFormDialogState();
@@ -250,10 +260,9 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
                   }
                 },
                 validator: (val) =>
-                    _date == null ? 'Wybierz datę odjazdu' : null,
+                _date == null ? 'Wybierz datę odjazdu' : null,
               ),
               const SizedBox(height: 10),
-
               TextFormField(
                 controller: _timeController,
                 decoration: const InputDecoration(
@@ -283,7 +292,6 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
                 },
               ),
               const SizedBox(height: 10),
-
               TextFormField(
                 initialValue: '1',
                 decoration: const InputDecoration(labelText: 'Liczba miejsc'),
@@ -334,4 +342,3 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
     );
   }
 }
-
