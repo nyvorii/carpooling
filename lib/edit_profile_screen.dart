@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final File? currentImage;
@@ -34,8 +35,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _surnameController = TextEditingController(text: widget.currentSurname);
     imageFile = widget.currentImage;
 
-    _loadCustomPhoto();
+    Future.microtask(_loadCustomPhoto);
   }
+
 
   Future<void> _loadCustomPhoto() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -69,14 +71,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<String?> _convertToBase64(File image) async {
-    try {
-      final bytes = await image.readAsBytes();
-      return base64Encode(bytes);
-    } catch (e) {
-      print('Błąd konwersji na base64: $e');
-      return null;
-    }
+    return compute(_encodeImageToBase64, image);
   }
+
+  String _encodeImageToBase64(File image) {
+    final bytes = image.readAsBytesSync();
+    return base64Encode(bytes);
+  }
+
 
   Future<void> _saveProfile() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -97,11 +99,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       String? base64Image;
 
-      await firestore.collection('users').doc(user.uid).set({
-        'displayName': fullName,
-      }, SetOptions(merge: true));
+      await Future.wait([
+        firestore.collection('users').doc(user.uid).set(
+          {'displayName': fullName},
+          SetOptions(merge: true),
+        ),
+        user.updateDisplayName(fullName),
+      ]);
 
-      await user.updateDisplayName(fullName);
 
       if (imageFile != null) {
         base64Image = await _convertToBase64(imageFile!);
@@ -109,8 +114,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           'customPhotoUrl': base64Image,
         }, SetOptions(merge: true));
       }
-
-      await user.reload();
 
       Navigator.pop(context, {
         'image': imageFile,

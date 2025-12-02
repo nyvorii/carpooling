@@ -13,85 +13,72 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
-  Future<void> _loginWithGoogle(BuildContext context) async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  // Funkcja logowania
+  Future<void> _loginWithGoogle() async {
     try {
       final FirebaseAuth auth = FirebaseAuth.instance;
 
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
+      // 1️ Próba szybkiego logowania z cache
+      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // 2️ Jeśli brak konta w cache — otwórz UI wyboru konta
+      googleUser ??= await _googleSignIn.signIn();
+      if (googleUser == null) return; // użytkownik anulował
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
+      await auth.signInWithCredential(credential);
+      final user = auth.currentUser;
+      if (user == null) return;
 
-      final User? user = userCredential.user;
+      // 3️ Zapis do Firestore w tle (minimalny)
+      _saveUserToFirestore(user);
 
-      if (user != null) {
-        await _saveUserToFirestore(user);
-        if (context.mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MenuScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Błąd logowania: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logowanie nie powiodło się: $e')),
+      // 4️ Przejście do MenuScreen od razu
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MenuScreen()),
         );
       }
-    } finally {
+    } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Błąd logowania: $e")));
       }
     }
   }
 
-Future<void> _saveUserToFirestore(User user) async {
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final userDocRef = firestore.collection('users').doc(user.uid);
+  // Zapis profilu do Firestore w tle
+  Future<void> _saveUserToFirestore(User user) async {
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
-  final docSnapshot = await userDocRef.get();
-  String? existingCustomPhotoUrl;
-  if (docSnapshot.exists) {
-    existingCustomPhotoUrl = docSnapshot.data()?['customPhotoUrl'];
-  }
-
-  await userDocRef.set(
-    {
+    await userDoc.set({
       'uid': user.uid,
       'email': user.email,
       'displayName': user.displayName,
       'photoURL': user.photoURL,
-      if (existingCustomPhotoUrl != null) 'customPhotoUrl': existingCustomPhotoUrl,
       'lastLogin': FieldValue.serverTimestamp(),
-    },
-    SetOptions(merge: true),
-  );
+    }, SetOptions(merge: true));
+  }
 
-  debugPrint('Pomyślnie zapisano/zaktualizowano użytkownika w Firestore.');
-}
+  void _startLoginFlow() {
+    if (_isLoading) return;
 
+    setState(() => _isLoading = true);
+
+    // Mikrotask → UI od razu pokaże loader
+    Future.microtask(() async {
+      await _loginWithGoogle();
+      if (mounted) setState(() => _isLoading = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,28 +106,25 @@ Future<void> _saveUserToFirestore(User user) async {
               ),
             ),
             const SizedBox(height: 40),
-            if (_isLoading)
-              const CircularProgressIndicator(
-                color: Colors.white,
-              )
-            else
-              ElevatedButton.icon(
-                icon: const Icon(Icons.map),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+
+            _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : ElevatedButton.icon(
+                    icon: const Icon(Icons.login),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    label: const Text(
+                      'Zaloguj przez Google',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onPressed: _startLoginFlow,
                   ),
-                ),
-                label: const Text(
-                  'Zaloguj przez Google',
-                  style: TextStyle(fontSize: 18),
-                ),
-                onPressed: _isLoading ? null : () => _loginWithGoogle(context),
-              ),
           ],
         ),
       ),
