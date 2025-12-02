@@ -17,16 +17,16 @@ class BookingModelAdapter extends TypeAdapter<BookingModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return BookingModel(
-      id: fields[0] as String,
-      routeId: fields[1] as String,
-      passengerId: fields[2] as String,
-      passengerName: fields[3] as String,
-      passengerEmail: fields[4] as String,
-      status: fields[5] as String,
-      costShare: fields[6] as double,
-      seatsBooked: fields[7] as int,
-      createdAt: fields[8] as DateTime,
-      updatedAt: fields[9] as DateTime,
+      id: fields[0] as String?,
+      routeId: fields[1] as String?,
+      passengerId: fields[2] as String?,
+      passengerName: fields[3] as String?,
+      passengerEmail: fields[4] as String?,
+      status: fields[5] as String?,
+      costShare: fields[6] as double?,
+      seatsBooked: fields[7] as int?,
+      createdAt: fields[8] as DateTime?,
+      updatedAt: fields[9] as DateTime?,
     );
   }
 

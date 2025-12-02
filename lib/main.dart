@@ -4,9 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
+// POPRAWIONE: Importy bez folderu screens/
 import 'map_screen.dart';
 import 'menu_screen.dart';
 import 'home_screen.dart';
+import 'profile_screen.dart';
+import 'book_screen.dart';
+import 'available_routes_screen.dart';
+import 'driver_bookings_screen.dart';
+import 'edit_profile_screen.dart';
+import 'my_vehicles_screen.dart';
+import 'rides_history_passenger.dart';
+import 'rides_history_driver.dart';
 import 'models/route_model.dart';
 import 'models/latlng_adapter.dart';
 import 'models/booking_model.dart';
@@ -20,14 +29,23 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // inicjalizowanie Hive
   await Hive.initFlutter();
 
   Hive.registerAdapter(LatLngAdapter());
   Hive.registerAdapter(RouteModelAdapter());
   Hive.registerAdapter(BookingModelAdapter());
 
-  await Hive.openBox<RouteModel>('routes');
-  await Hive.openBox<BookingModel>('bookings');
+  // box na bledy
+  try {
+    await Hive.openBox<RouteModel>('routes');
+    await Hive.openBox<BookingModel>('bookings');
+  } catch (e) {
+    await Hive.deleteBoxFromDisk('routes');
+    await Hive.deleteBoxFromDisk('bookings');
+    await Hive.openBox<RouteModel>('routes');
+    await Hive.openBox<BookingModel>('bookings');
+  }
 
   runApp(
     MultiProvider(
@@ -56,11 +74,29 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Carpooling App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: Colors.blueAccent,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.grey[50],
         ),
       ),
       home: const AuthWrapper(),

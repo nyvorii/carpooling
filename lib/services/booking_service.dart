@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hive/hive.dart';
 import '../models/booking_model.dart';
 import '../models/route_model.dart';
 
@@ -23,8 +24,8 @@ class BookingService {
     try {
       final user = _auth.currentUser;
       if (user == null) return false;
-
       if (route.avaiableSeats < seats) {
+      if (route.availableSeats < seats) {
         return false;
       }
 
@@ -32,9 +33,10 @@ class BookingService {
           ? (route.totalCost / route.seats) * seats
           : 0.0;
 
+      final bookingId = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
       final booking = BookingModel(
-        id: '',
-        routeId: route.key.toString(),
+        id: bookingId,
+        routeId: route.id,
         passengerId: user.uid,
         passengerName: passengerName,
         passengerEmail: passengerEmail,
@@ -44,8 +46,7 @@ class BookingService {
         updatedAt: DateTime.now(),
       );
 
-      final docRef = await _firestore.collection('bookings').add(booking.toFirestore());
-      await docRef.update({'id': docRef.id});
+      await _firestore.collection('bookings').doc(bookingId).set(booking.toFirestore());
 
       await _updateRouteAfterBooking(route, seats, user.uid);
 
@@ -57,14 +58,32 @@ class BookingService {
   }
 
   Future<void> _updateRouteAfterBooking(RouteModel route, int seats, String passengerId) async {
-    // Hive
-    route.bookedSeats += seats;
-    route.passengerIds.add(passengerId);
-    await route.save();
+    final updatedRoute = RouteModel(
+      id: route.id,
+      start: route.start,
+      end: route.end,
+      date: route.date,
+      seats: route.seats,
+      routePoints: route.routePoints,
+      bookedSeats: route.bookedSeats + seats,
+      driverId: route.driverId,
+      driverName: route.driverName,
+      totalCost: route.totalCost,
+      passengerIds: [...route.passengerIds, passengerId],
+      isActive: route.isActive,
+    );
+
+    // Hive trasy
+    try {
+      final box = Hive.box<RouteModel>('routes');
+      await box.put(route.id, updatedRoute);
+    } catch (e) {
+      print('Błąd aktualizacji trasy w Hive: $e');
+    }
 
     // Firestore
     try {
-      await _firestore.collection('routes').doc(route.key.toString()).update({
+      await _firestore.collection('routes').doc(route.id).update({
         'bookedSeats': FieldValue.increment(seats),
         'passengerIds': FieldValue.arrayUnion([passengerId]),
         'updatedAt': Timestamp.now(),
@@ -83,13 +102,14 @@ class BookingService {
 
       final bookingData = bookingSnapshot.data()!;
       final seatsBooked = bookingData['seatsBooked'] ?? 1;
+      final passengerId = bookingData['passengerId'] as String? ?? '';
 
       await bookingDoc.update({
         'status': 'cancelled',
         'updatedAt': Timestamp.now(),
       });
 
-      await _updateRouteAfterCancellation(route, seatsBooked, bookingData['passengerId']);
+      await _updateRouteAfterCancellation(route, seatsBooked, passengerId);
 
       return true;
     } catch (e) {
@@ -99,14 +119,33 @@ class BookingService {
   }
 
   Future<void> _updateRouteAfterCancellation(RouteModel route, int seats, String passengerId) async {
+    // aktualizacja tras hive
+    final updatedRoute = RouteModel(
+      id: route.id,
+      start: route.start,
+      end: route.end,
+      date: route.date,
+      seats: route.seats,
+      routePoints: route.routePoints,
+      bookedSeats: (route.bookedSeats - seats).clamp(0, route.seats),
+      driverId: route.driverId,
+      driverName: route.driverName,
+      totalCost: route.totalCost,
+      passengerIds: route.passengerIds.where((id) => id != passengerId).toList(),
+      isActive: route.isActive,
+    );
+
     // Hive
-    route.bookedSeats = (route.bookedSeats - seats).clamp(0, route.seats);
-    route.passengerIds.remove(passengerId);
-    await route.save();
+    try {
+      final box = Hive.box<RouteModel>('routes');
+      await box.put(route.id, updatedRoute);
+    } catch (e) {
+      print('Błąd aktualizacji trasy w Hive: $e');
+    }
 
     // Firestore
     try {
-      await _firestore.collection('routes').doc(route.key.toString()).update({
+      await _firestore.collection('routes').doc(route.id).update({
         'bookedSeats': FieldValue.increment(-seats),
         'passengerIds': FieldValue.arrayRemove([passengerId]),
         'updatedAt': Timestamp.now(),
@@ -127,8 +166,11 @@ class BookingService {
       for (var doc in snapshot.docs) {
         final booking = BookingModel.fromFirestore(doc);
         final routeDoc = await _firestore.collection('routes').doc(booking.routeId).get();
-        if (routeDoc.exists && routeDoc.data()!['driverId'] == driverId) {
-          bookings.add(booking);
+        if (routeDoc.exists) {
+          final routeData = routeDoc.data();
+          if (routeData != null && routeData['driverId'] == driverId) {
+            bookings.add(booking);
+          }
         }
       }
 

@@ -36,21 +36,70 @@ class BookingModel {
   DateTime updatedAt;
 
   BookingModel({
-    required this.id,
-    required this.routeId,
-    required this.passengerId,
-    required this.passengerName,
-    required this.passengerEmail,
-    this.status = 'confirmed',
-    required this.costShare,
-    this.seatsBooked = 1,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+    String? id,
+    String? routeId,
+    String? passengerId,
+    String? passengerName,
+    String? passengerEmail,
+    String? status,
+    double? costShare,
+    int? seatsBooked,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : id = id ?? '',
+        routeId = routeId ?? '',
+        passengerId = passengerId ?? '',
+        passengerName = passengerName ?? '',
+        passengerEmail = passengerEmail ?? '',
+        status = status ?? 'confirmed',
+        costShare = costShare ?? 0.0,
+        seatsBooked = seatsBooked ?? 1,
+        createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  factory BookingModel.empty() {
+    return BookingModel(
+      id: '',
+      routeId: '',
+      passengerId: '',
+      passengerName: '',
+      passengerEmail: '',
+      status: 'confirmed',
+      costShare: 0.0,
+      seatsBooked: 1,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+  factory BookingModel.create({
+    required String id,
+    required String routeId,
+    required String passengerId,
+    required String passengerName,
+    required String passengerEmail,
+    String status = 'confirmed',
+    required double costShare,
+    int seatsBooked = 1,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) {
+    return BookingModel(
+      id: id,
+      routeId: routeId,
+      passengerId: passengerId,
+      passengerName: passengerName,
+      passengerEmail: passengerEmail,
+      status: status,
+      costShare: costShare,
+      seatsBooked: seatsBooked,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 
   factory BookingModel.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
-    return BookingModel(
+    return BookingModel.create(
       id: doc.id,
       routeId: data['routeId'] ?? '',
       passengerId: data['passengerId'] ?? '',
