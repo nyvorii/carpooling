@@ -24,7 +24,6 @@ class BookingService {
     try {
       final user = _auth.currentUser;
       if (user == null) return false;
-      if (route.avaiableSeats < seats) {
       if (route.availableSeats < seats) {
         return false;
       }
