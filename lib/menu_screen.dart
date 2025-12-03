@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'routes_screen.dart';
 import 'profile_screen.dart';
 import 'book_screen.dart';
-import 'map_screen.dart'; 
+import 'map_screen.dart';
+import 'driver_bookings_screen.dart';
+import 'available_routes_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -16,7 +20,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   final List<Widget> _screens = [
     const MapScreen(),
-    const RoutesScreen(),
+    const AvailableRoutesScreen(),
     const BookScreen(),
     const ProfileScreen(),
   ];
@@ -29,13 +33,18 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<User?>(context);
+    final userName = user?.displayName ?? 'Użytkownik';
+    final userEmail = user?.email ?? '';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Aplikacja Carpooling'),
         backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
       ),
       body: _screens[_currentIndex],
-      drawer: _buildDrawer(),
+      drawer: _buildDrawer(userName, userEmail),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onTabTapped,
@@ -58,25 +67,52 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ],
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
       ),
     );
   }
 
-  Widget _buildDrawer(){
+  Widget _buildDrawer(String userName, String userEmail){
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const UserAccountsDrawerHeader(
-            accountName: Text('Jaro', style: TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: Text('Krul'),
+          UserAccountsDrawerHeader(
+            accountName: Text(userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            accountEmail: Text(userEmail),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.directions_car, color: Colors.blueAccent, size: 30),
+              child: Text(
+                userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                style: const TextStyle(fontSize: 20, color: Colors.blueAccent),
+              ),
             ),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.blueAccent,
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.search),
+            title: const Text('Dostępne trasy'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AvailableRoutesScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.people),
+            title: const Text('Rezerwacje pasażerów'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DriverBookingsScreen()),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.settings),
@@ -87,14 +123,22 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Wyloguj'),
-            onTap: () {
-              Navigator.pop(context);
-            }
+              leading: const Icon(Icons.logout),
+              title: const Text('Wyloguj'),
+              onTap: () {
+                _signOut(context);
+              }
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      print('Błąd wylogowania: $e');
+    }
   }
 }
