@@ -5,17 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
 // POPRAWIONE: Importy bez folderu screens/
-import 'map_screen.dart';
+
 import 'menu_screen.dart';
 import 'home_screen.dart';
-import 'profile_screen.dart';
-import 'book_screen.dart';
-import 'available_routes_screen.dart';
-import 'driver_bookings_screen.dart';
-import 'edit_profile_screen.dart';
-import 'my_vehicles_screen.dart';
-import 'rides_history_passenger.dart';
-import 'rides_history_driver.dart';
+
 import 'models/route_model.dart';
 import 'models/latlng_adapter.dart';
 import 'models/booking_model.dart';

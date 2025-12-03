@@ -119,7 +119,7 @@ class AvailableRoutesScreen extends StatelessWidget {
   }
 
   String _formatLocation(LatLng location) {
-    // mozna jeszcze dodać geocoding API zeby zamieniac wspolrzedne na adres TODO
+    /* mozna jeszcze dodać geocoding API zeby zamieniac wspolrzedne na adres TODO */
     return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
   }
 

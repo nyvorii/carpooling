@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/route_model.dart';
-import '../services/booking_service.dart';
+
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -105,7 +105,7 @@ class _MapScreenState extends State<MapScreen> {
           .where((route) => route.routePoints.isNotEmpty && route.isActive)
           .map((route) => Polyline(
         points: route.routePoints,
-        color: Colors.blue.withOpacity(0.5),
+        color: Colors.blue.withValues(alpha: 0.5),
         strokeWidth: 3,
       ))
           .toList();

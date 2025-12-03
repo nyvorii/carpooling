@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'routes_screen.dart';
 import 'profile_screen.dart';
 import 'book_screen.dart';
 import 'map_screen.dart';
@@ -138,7 +137,7 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       await FirebaseAuth.instance.signOut();
     } catch (e) {
-      print('Błąd wylogowania: $e');
+      debugPrint('Błąd wylogowania: $e');
     }
   }
 }

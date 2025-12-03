@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
-import 'latlng_adapter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 part 'route_model.g.dart';
