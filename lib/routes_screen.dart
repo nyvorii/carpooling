@@ -20,8 +20,25 @@ class _RoutesScreenState extends State<RoutesScreen> {
 
   void reserveSeat(RouteModel route) async {
     if (route.bookedSeats < route.seats) {
-      route.bookedSeats += 1;
-      await route.save();
+
+      final updatedRoute = RouteModel(
+        id: route.id,
+        start: route.start,
+        end: route.end,
+        date: route.date,
+        seats: route.seats,
+        routePoints: route.routePoints,
+        bookedSeats: route.bookedSeats + 1,
+        driverId: route.driverId,
+        driverName: route.driverName,
+        totalCost: route.totalCost,
+        passengerIds: route.passengerIds,
+        isActive: route.isActive,
+      );
+
+      // zapis zaktualizowanych tras
+      await routesBox.put(route.id, updatedRoute);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Miejsce zarezerwowane!')),
       );
@@ -53,12 +70,12 @@ class _RoutesScreenState extends State<RoutesScreen> {
               child: ListTile(
                 title: Text(
                   'Trasa: (${route.start.latitude.toStringAsFixed(4)}, ${route.start.longitude.toStringAsFixed(4)}) → '
-                  '(${route.end.latitude.toStringAsFixed(4)}, ${route.end.longitude.toStringAsFixed(4)})',
+                      '(${route.end.latitude.toStringAsFixed(4)}, ${route.end.longitude.toStringAsFixed(4)})',
                 ),
                 subtitle: Text(
                   'Data: ${route.date.day}.${route.date.month}.${route.date.year} '
-                  '${route.date.hour.toString().padLeft(2,'0')}:${route.date.minute.toString().padLeft(2,'0')}\n'
-                  'Miejsca: ${route.seats - route.bookedSeats} / ${route.seats}',
+                      '${route.date.hour.toString().padLeft(2, '0')}:${route.date.minute.toString().padLeft(2, '0')}\n'
+                      'Miejsca: ${route.seats - route.bookedSeats} / ${route.seats}',
                 ),
                 trailing: ElevatedButton(
                   onPressed: () => reserveSeat(route),
