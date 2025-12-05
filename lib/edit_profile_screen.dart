@@ -38,26 +38,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Future.microtask(_loadCustomPhoto);
   }
 
-
-  Future<void> _loadCustomPhoto() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final base64 = doc.data()?['customPhotoUrl'];
-
-    if (base64 != null && base64.toString().isNotEmpty) {
-      setState(() {
-        customPhotoBase64 = base64;
-      });
-    }
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
     _surnameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCustomPhoto() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final base64 = doc.data()?['customPhotoUrl'];
+
+      if (base64 != null && base64.toString().isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            customPhotoBase64 = base64;
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -71,14 +76,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<String?> _convertToBase64(File image) async {
-    return compute(_encodeImageToBase64, image);
+    return compute(_encodeImageToBase64, image.path);
   }
 
-  String _encodeImageToBase64(File image) {
-    final bytes = image.readAsBytesSync();
+  static String _encodeImageToBase64(String path) {
+    final file = File(path);
+    final bytes = file.readAsBytesSync();
     return base64Encode(bytes);
   }
-
 
   Future<void> _saveProfile() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -97,32 +102,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return;
       }
 
-      String? base64Image;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
 
-      await Future.wait([
-        firestore.collection('users').doc(user.uid).set(
-          {'displayName': fullName},
-          SetOptions(merge: true),
-        ),
-        user.updateDisplayName(fullName),
-      ]);
+      try {
+        String? base64Image;
 
+        if (imageFile != null) {
+          base64Image = await _convertToBase64(imageFile!);
+          
+          if (base64Image != null) {
+             await firestore.collection('users').doc(user.uid).set({
+              'customPhotoUrl': base64Image,
+            }, SetOptions(merge: true));
+          }
+        }
 
-      if (imageFile != null) {
-        base64Image = await _convertToBase64(imageFile!);
-        await firestore.collection('users').doc(user.uid).set({
-          'customPhotoUrl': base64Image,
-        }, SetOptions(merge: true));
+        await Future.wait([
+          firestore.collection('users').doc(user.uid).set(
+            {'displayName': fullName},
+            SetOptions(merge: true),
+          ),
+          user.updateDisplayName(fullName),
+        ]);
+
+        if (mounted) {
+          Navigator.pop(context); 
+          Navigator.pop(context, {
+            'image': imageFile,
+            'name': name,
+            'surname': surname,
+            'photoUrl': base64Image != null
+                ? 'data:image/png;base64,$base64Image'
+                : user.photoURL,
+          });
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        print(e);
       }
-
-      Navigator.pop(context, {
-        'image': imageFile,
-        'name': name,
-        'surname': surname,
-        'photoUrl': base64Image != null
-            ? 'data:image/png;base64,$base64Image'
-            : user.photoURL,
-      });
     }
   }
 
@@ -144,7 +165,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Image.memory(base64Decode(customBase64), width: size, height: size, fit: BoxFit.cover),
         );
       } catch (e) {
-        print("Błąd dekodowania Base64: $e");
+        print(e);
       }
     }
 
@@ -170,36 +191,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edytuj profil')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            buildProfilePhoto(
-              imageFile: imageFile,
-              customBase64: customPhotoBase64,
-              photoUrl: userPhotoUrl,
-              size: 120,
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              icon: const Icon(Icons.photo_library),
-              label: const Text('Wybierz zdjęcie'),
-              onPressed: _pickImage,
-            ),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Imię'),
-            ),
-            TextField(
-              controller: _surnameController,
-              decoration: const InputDecoration(labelText: 'Nazwisko'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saveProfile,
-              child: const Text('Zapisz'),
-            ),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              buildProfilePhoto(
+                imageFile: imageFile,
+                customBase64: customPhotoBase64,
+                photoUrl: userPhotoUrl,
+                size: 120,
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Wybierz zdjęcie'),
+                onPressed: _pickImage,
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Imię',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _surnameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nazwisko',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  child: const Text('Zapisz zmiany', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
