@@ -4,15 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
-// POPRAWIONE: Importy bez folderu screens/
-
 import 'menu_screen.dart';
 import 'home_screen.dart';
-
 import 'models/route_model.dart';
 import 'models/latlng_adapter.dart';
 import 'models/booking_model.dart';
 import 'services/booking_service.dart';
+import 'providers/user_mode_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -22,14 +20,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // inicjalizowanie Hive
   await Hive.initFlutter();
 
   Hive.registerAdapter(LatLngAdapter());
   Hive.registerAdapter(RouteModelAdapter());
   Hive.registerAdapter(BookingModelAdapter());
 
-  // box na bledy
   try {
     await Hive.openBox<RouteModel>('routes');
     await Hive.openBox<BookingModel>('bookings');
@@ -49,6 +45,9 @@ void main() async {
         ),
         Provider<BookingService>(
           create: (_) => BookingService(),
+        ),
+        ChangeNotifierProvider<UserModeProvider>(
+          create: (_) => UserModeProvider(),
         ),
       ],
       child: const MyApp(),
