@@ -42,6 +42,12 @@ class RouteModel {
   @HiveField(11)
   bool isActive;
 
+  @HiveField(12)
+  String startAddress;
+
+  @HiveField(13)
+  String endAddress;
+
   RouteModel({
     this.id = '',
     LatLng? start,
@@ -55,6 +61,8 @@ class RouteModel {
     this.totalCost = 0.0,
     this.passengerIds = const [],
     this.isActive = true,
+    this.startAddress = '',
+    this.endAddress = '',
   })  : start = start ?? const LatLng(0, 0),
         end = end ?? const LatLng(0, 0),
         date = date ?? DateTime.now();
@@ -74,6 +82,8 @@ class RouteModel {
       'totalCost': totalCost,
       'passengerIds': passengerIds,
       'isActive': isActive,
+      'startAddress': startAddress,
+      'endAddress': endAddress,
       'routePoints': routePoints.map((point) =>
       {'lat': point.latitude, 'lng': point.longitude}).toList(),
       'createdAt': FieldValue.serverTimestamp(),
@@ -100,6 +110,8 @@ class RouteModel {
       totalCost: (data['totalCost'] ?? 0.0).toDouble(),
       passengerIds: List<String>.from(data['passengerIds'] ?? []),
       isActive: data['isActive'] ?? true,
+      startAddress: data['startAddress'] ?? '',
+      endAddress: data['endAddress'] ?? '',
     );
   }
 }

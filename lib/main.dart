@@ -9,9 +9,11 @@ import 'home_screen.dart';
 import 'models/route_model.dart';
 import 'models/latlng_adapter.dart';
 import 'models/booking_model.dart';
+import 'models/geocoding_cache_model.dart';
 import 'services/booking_service.dart';
 import 'providers/user_mode_provider.dart';
 import 'firebase_options.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,15 +27,23 @@ void main() async {
   Hive.registerAdapter(LatLngAdapter());
   Hive.registerAdapter(RouteModelAdapter());
   Hive.registerAdapter(BookingModelAdapter());
+  Hive.registerAdapter(GeocodingCacheAdapter());
 
   try {
     await Hive.openBox<RouteModel>('routes');
     await Hive.openBox<BookingModel>('bookings');
+    await Hive.openBox<GeocodingCache>('geocoding_cache');
+
+    final cacheBox = Hive.box<GeocodingCache>('geocoding_cache');
+    print('[MAIN] Geocoding cache box otwarta, rozmiar: ${cacheBox.length}');
   } catch (e) {
+    print('[MAIN] Błąd otwierania Hive boxes: $e');
     await Hive.deleteBoxFromDisk('routes');
     await Hive.deleteBoxFromDisk('bookings');
+    await Hive.deleteBoxFromDisk('geocoding_cache');
     await Hive.openBox<RouteModel>('routes');
     await Hive.openBox<BookingModel>('bookings');
+    await Hive.openBox<GeocodingCache>('geocoding_cache');
   }
 
   runApp(
