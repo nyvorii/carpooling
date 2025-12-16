@@ -6,6 +6,7 @@ import 'services/booking_service.dart';
 import 'models/booking_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'models/route_model.dart';
+import 'services/cached_geocoding_service.dart'; // DODAJ
 
 class BookScreen extends StatelessWidget {
   const BookScreen({super.key});
@@ -98,9 +99,20 @@ class BookScreen extends StatelessWidget {
                         elevation: 2,
                         child: ListTile(
                           leading: const Icon(Icons.directions_car_filled, color: Colors.blueAccent),
-                          title: Text(
-                            '${_getLocationName(routeData['start']) ?? 'Start'} → ${_getLocationName(routeData['end']) ?? 'Koniec'}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          title: FutureBuilder<Map<String, String>>(
+                            future: _getRouteAddresses(routeData),
+                            builder: (context, addressSnapshot) {
+                              if (addressSnapshot.connectionState == ConnectionState.waiting) {
+                                return const Text('Ładowanie trasy...');
+                              }
+                              final addresses = addressSnapshot.data ?? {'start': 'Start', 'end': 'Koniec'};
+                              final start = _shortenAddress(addresses['start']!);
+                              final end = _shortenAddress(addresses['end']!);
+                              return Text(
+                                '$start → $end',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              );
+                            },
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,11 +122,23 @@ class BookScreen extends StatelessWidget {
                               Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
                               Text('Miejsca: ${booking.seatsBooked}'),
                               Text('Kierowca: ${routeData['driverName'] ?? 'Nieznany'}'),
+                              FutureBuilder<Map<String, String>>(
+                                future: _getRouteAddresses(routeData),
+                                builder: (context, addressSnapshot) {
+                                  if (addressSnapshot.connectionState == ConnectionState.waiting) {
+                                    return const Text('Ładowanie adresów...');
+                                  }
+                                  final addresses = addressSnapshot.data ?? {'start': 'Start', 'end': 'Koniec'};
+                                  return Text(
+                                    'Z: ${addresses['start']}\nDo: ${addresses['end']}',
+                                    style: const TextStyle(fontSize: 12),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.cancel, color: Colors.red),
-                            // POPRAWIONE: przekazujemy wszystkie 4 argumenty
                             onPressed: () => _showCancelDialog(context, booking, routeData, bookingService),
                           ),
                           onTap: () {
@@ -133,18 +157,71 @@ class BookScreen extends StatelessWidget {
     );
   }
 
+  Future<Map<String, String>> _getRouteAddresses(Map<String, dynamic> routeData) async {
+    try {
+      final geocodingService = CachedGeocodingService();
+
+      // Sprawdź czy adresy są już zapisane w routeData
+      final startAddressFromData = routeData['startAddress'] as String?;
+      final endAddressFromData = routeData['endAddress'] as String?;
+
+      String startAddress;
+      String endAddress;
+
+      if (startAddressFromData != null && startAddressFromData.isNotEmpty) {
+        startAddress = startAddressFromData;
+      } else {
+        // Geokoduj start
+        final startCoords = routeData['start'] as Map<String, dynamic>;
+        final startLatLng = LatLng(
+          startCoords['lat'] as double,
+          startCoords['lng'] as double,
+        );
+        startAddress = await geocodingService.coordinatesToAddress(startLatLng);
+      }
+
+      if (endAddressFromData != null && endAddressFromData.isNotEmpty) {
+        endAddress = endAddressFromData;
+      } else {
+        // Geokoduj end
+        final endCoords = routeData['end'] as Map<String, dynamic>;
+        final endLatLng = LatLng(
+          endCoords['lat'] as double,
+          endCoords['lng'] as double,
+        );
+        endAddress = await geocodingService.coordinatesToAddress(endLatLng);
+      }
+
+      return {
+        'start': startAddress,
+        'end': endAddress,
+      };
+    } catch (e) {
+      // W razie błędu pokaż współrzędne
+      final startCoords = routeData['start'] as Map<String, dynamic>;
+      final endCoords = routeData['end'] as Map<String, dynamic>;
+      return {
+        'start': '${startCoords['lat']?.toStringAsFixed(4) ?? 0}, ${startCoords['lng']?.toStringAsFixed(4) ?? 0}',
+        'end': '${endCoords['lat']?.toStringAsFixed(4) ?? 0}, ${endCoords['lng']?.toStringAsFixed(4) ?? 0}',
+      };
+    }
+  }
+
+  String _shortenAddress(String address) {
+    if (address.length <= 25) return address;
+
+    final parts = address.split(',');
+    if (parts.length > 2) {
+      return '${parts[0]}, ${parts[1]}...';
+    }
+
+    return address.substring(0, 22) + '...';
+  }
+
   String _formatDate(DateTime date) {
     return '${date.day}.${date.month}.${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  String? _getLocationName(dynamic location) {
-    if (location is Map) {
-      return location['address'] ?? 'Lokalizacja';
-    }
-    return null;
-  }
-
-  // POPRAWIONE: funkcja przyjmuje wszystkie 4 argumenty w poprawnej kolejności
   void _showCancelDialog(BuildContext context, BookingModel booking, Map<String, dynamic> routeData, BookingService bookingService) {
     showDialog(
       context: context,
@@ -205,26 +282,37 @@ class BookScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Szczegóły rezerwacji'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Trasa: ${_getLocationName(routeData['start']) ?? 'Start'} → ${_getLocationName(routeData['end']) ?? 'Koniec'}'),
-              const SizedBox(height: 8),
-              Text('Data: ${_formatDate((routeData['date'] as Timestamp).toDate())}'),
-              const SizedBox(height: 8),
-              Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
-              const SizedBox(height: 8),
-              Text('Miejsca: ${booking.seatsBooked}'),
-              const SizedBox(height: 8),
-              Text('Kierowca: ${routeData['driverName'] ?? 'Nieznany'}'),
-              const SizedBox(height: 8),
-              Text('Status: ${_getStatusText(booking.status)}'),
-              const SizedBox(height: 8),
-              Text('Data rezerwacji: ${_formatDate(booking.createdAt)}'),
-            ],
-          ),
+        content: FutureBuilder<Map<String, String>>(
+          future: _getRouteAddresses(routeData),
+          builder: (context, addressSnapshot) {
+            if (addressSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final addresses = addressSnapshot.data ?? {'start': 'Start', 'end': 'Koniec'};
+
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Trasa: ${addresses['start']} → ${addresses['end']}'),
+                  const SizedBox(height: 8),
+                  Text('Data: ${_formatDate((routeData['date'] as Timestamp).toDate())}'),
+                  const SizedBox(height: 8),
+                  Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
+                  const SizedBox(height: 8),
+                  Text('Miejsca: ${booking.seatsBooked}'),
+                  const SizedBox(height: 8),
+                  Text('Kierowca: ${routeData['driverName'] ?? 'Nieznany'}'),
+                  const SizedBox(height: 8),
+                  Text('Status: ${_getStatusText(booking.status)}'),
+                  const SizedBox(height: 8),
+                  Text('Data rezerwacji: ${_formatDate(booking.createdAt)}'),
+                ],
+              ),
+            );
+          },
         ),
         actions: [
           TextButton(

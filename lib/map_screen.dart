@@ -8,7 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/route_model.dart';
-
+import 'package:geocoding/geocoding.dart';
+import '../services/cached_geocoding_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -23,6 +24,11 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _end;
   List<LatLng> _routePoints = [];
   bool _isLoadingRoute = false;
+
+  String _startAddress = 'Wybierz punkt startowy';
+  String _endAddress = 'Wybierz punkt końcowy';
+  bool _isLoadingAddress = false;
+  final CachedGeocodingService _geocodingService = CachedGeocodingService();
 
   final String _apiKey = '5b3ce3597851110001cf6248bc471630a22e479f8bc23ec4a6b5b086';
 
@@ -98,6 +104,49 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Future<void> _updateAddresses() async {
+    if (_start != null) {
+      setState(() => _isLoadingAddress = true);
+      try {
+        final address = await _geocodingService.coordinatesToAddress(_start!);
+        setState(() => _startAddress = _shortenAddress(address));
+      } catch (e) {
+        setState(() => _startAddress = '${_start!.latitude.toStringAsFixed(4)}, ${_start!.longitude.toStringAsFixed(4)}');
+      }
+    } else {
+      setState(() => _startAddress = 'Wybierz punkt startowy');
+    }
+
+    if (_end != null) {
+      try {
+        final address = await _geocodingService.coordinatesToAddress(_end!);
+        setState(() => _endAddress = _shortenAddress(address));
+      } catch (e) {
+        setState(() => _endAddress = '${_end!.latitude.toStringAsFixed(4)}, ${_end!.longitude.toStringAsFixed(4)}');
+      }
+    } else {
+      setState(() => _endAddress = 'Wybierz punkt końcowy');
+    }
+    setState(() => _isLoadingAddress = false);
+  }
+
+  String _shortenAddress(String address) {
+    if (address.length <= 30) return address;
+    final parts = address.split(',');
+    return parts.length > 1 ? '${parts[0]}, ${parts[1]}' : address.substring(0, 27) + '...';
+  }
+
+  void _refreshRoute(LatLng? newStart, LatLng? newEnd) {
+    if (newStart != null) _start = newStart;
+    if (newEnd != null) _end = newEnd;
+
+    if (_start != null && _end != null) {
+      _getRoute(_start!, _end!);
+    }
+
+    _updateAddresses();
+  }
+
   List<Polyline> _buildSavedPolylines() {
     try {
       final box = Hive.box<RouteModel>('routes');
@@ -105,7 +154,7 @@ class _MapScreenState extends State<MapScreen> {
           .where((route) => route.routePoints.isNotEmpty && route.isActive)
           .map((route) => Polyline(
         points: route.routePoints,
-        color: Colors.blue.withValues(alpha: 0.5),
+        color: Colors.blue.withAlpha(128),
         strokeWidth: 3,
       ))
           .toList();
@@ -143,10 +192,13 @@ class _MapScreenState extends State<MapScreen> {
       final firestore = FirebaseFirestore.instance;
       final routeId = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
 
+      final start = routeData['start'] as LatLng? ?? _start!;
+      final end = routeData['end'] as LatLng? ?? _end!;
+
       final route = RouteModel(
         id: routeId,
-        start: _start!,
-        end: _end!,
+        start: start,
+        end: end,
         date: routeData['date'] as DateTime,
         seats: routeData['seats'] as int,
         routePoints: _routePoints,
@@ -156,6 +208,8 @@ class _MapScreenState extends State<MapScreen> {
         totalCost: routeData['cost'] as double,
         passengerIds: [],
         isActive: true,
+        startAddress: routeData['startAddress'] as String? ?? '',
+        endAddress: routeData['endAddress'] as String? ?? '',
       );
 
       await firestore.collection('routes').doc(routeId).set(route.toFirestore());
@@ -184,7 +238,7 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: const LatLng(52.2297, 21.0122), // Warszawa
+              initialCenter: const LatLng(52.2297, 21.0122),
               initialZoom: 6,
               onTap: (tapPosition, point) {
                 if (_isLoadingRoute) return;
@@ -200,6 +254,7 @@ class _MapScreenState extends State<MapScreen> {
                     _end = null;
                     _routePoints = [];
                   }
+                  _updateAddresses();
                 });
               },
             ),
@@ -262,14 +317,34 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (_start != null)
-                      Text('Start: ${_start!.latitude.toStringAsFixed(4)}, ${_start!.longitude.toStringAsFixed(4)}'),
-                    if (_end != null)
-                      Text('Koniec: ${_end!.latitude.toStringAsFixed(4)}, ${_end!.longitude.toStringAsFixed(4)}'),
-                    if (_start != null && _end == null)
-                      const Text('Kliknij na mapę, aby wybrać punkt końcowy'),
-                    if (_start == null)
-                      const Text('Kliknij na mapę, aby wybrać punkt startowy'),
+                    if (_isLoadingAddress)
+                      const Center(child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ))
+                    else ...[
+                      if (_start != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.green, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text('Start: $_startAddress')),
+                          ],
+                        ),
+                      if (_end != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.flag, color: Colors.red, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text('Koniec: $_endAddress')),
+                          ],
+                        ),
+                      if (_start == null)
+                        const Text('Kliknij na mapę, aby wybrać punkt startowy'),
+                      if (_start != null && _end == null)
+                        const Text('Kliknij na mapę, aby wybrać punkt końcowy'),
+                    ],
                   ],
                 ),
               ),
@@ -286,6 +361,8 @@ class _MapScreenState extends State<MapScreen> {
                 _start = null;
                 _end = null;
                 _routePoints = [];
+                _startAddress = 'Wybierz punkt startowy';
+                _endAddress = 'Wybierz punkt końcowy';
               });
             },
             label: const Text('Wyczyść'),
@@ -312,6 +389,7 @@ class _MapScreenState extends State<MapScreen> {
                     start: _start!,
                     end: _end!,
                     routePoints: _routePoints,
+                    onRouteChanged: _refreshRoute,
                   ),
                 );
 
@@ -335,12 +413,14 @@ class RouteFormDialog extends StatefulWidget {
   final LatLng start;
   final LatLng end;
   final List<LatLng> routePoints;
+  final Function(LatLng?, LatLng?)? onRouteChanged;
 
   const RouteFormDialog({
     super.key,
     required this.start,
     required this.end,
     required this.routePoints,
+    this.onRouteChanged,
   });
 
   @override
@@ -354,6 +434,12 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
   double _cost = 50.0;
   final TextEditingController _timeController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
+  final TextEditingController _startAddressController = TextEditingController();
+  final TextEditingController _endAddressController = TextEditingController();
+  LatLng? _currentStart;
+  LatLng? _currentEnd;
+  bool _isLoadingAddresses = false;
+  final CachedGeocodingService _geocodingService = CachedGeocodingService();
 
   @override
   void initState() {
@@ -361,12 +447,87 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
     _date = DateTime.now().add(const Duration(hours: 1));
     _timeController.text = '${_date!.hour.toString().padLeft(2, '0')}:${_date!.minute.toString().padLeft(2, '0')}';
     _costController.text = _cost.toString();
+    _currentStart = widget.start;
+    _currentEnd = widget.end;
+    _loadAddresses();
+  }
+
+  Future<void> _loadAddresses() async {
+    setState(() => _isLoadingAddresses = true);
+
+    try {
+      final startAddress = await _geocodingService.coordinatesToAddress(widget.start);
+      final endAddress = await _geocodingService.coordinatesToAddress(widget.end);
+
+      if (mounted) {
+        setState(() {
+          _startAddressController.text = startAddress;
+          _endAddressController.text = endAddress;
+          _isLoadingAddresses = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _startAddressController.text = '${widget.start.latitude.toStringAsFixed(4)}, ${widget.start.longitude.toStringAsFixed(4)}';
+          _endAddressController.text = '${widget.end.latitude.toStringAsFixed(4)}, ${widget.end.longitude.toStringAsFixed(4)}';
+          _isLoadingAddresses = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateCoordinatesFromAddress(bool isStart) async {
+    final address = isStart ? _startAddressController.text : _endAddressController.text;
+
+    if (address.isEmpty) return;
+
+    setState(() => _isLoadingAddresses = true);
+
+    try {
+      final coordinates = await _geocodingService.addressToCoordinates(address);
+
+      if (coordinates != null && mounted) {
+        setState(() {
+          if (isStart) {
+            _currentStart = coordinates;
+          } else {
+            _currentEnd = coordinates;
+          }
+          _isLoadingAddresses = false;
+        });
+
+
+        if (widget.onRouteChanged != null) {
+          widget.onRouteChanged!(
+            isStart ? coordinates : _currentStart,
+            isStart ? _currentEnd : coordinates,
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingAddresses = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nie znaleziono lokalizacji dla podanego adresu')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingAddresses = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd: $e')),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _timeController.dispose();
     _costController.dispose();
+    _startAddressController.dispose();
+    _endAddressController.dispose();
     super.dispose();
   }
 
@@ -380,16 +541,92 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.location_on, color: Colors.green),
-                title: const Text('Start:'),
-                subtitle: Text('${widget.start.latitude.toStringAsFixed(4)}, ${widget.start.longitude.toStringAsFixed(4)}'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.green, size: 16),
+                          const SizedBox(width: 8),
+                          Text('Start:', style: Theme.of(context).textTheme.titleSmall),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _startAddressController,
+                        decoration: InputDecoration(
+                          labelText: 'Adres startowy',
+                          suffixIcon: _isLoadingAddresses
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                              : IconButton(
+                            icon: const Icon(Icons.refresh, size: 20),
+                            onPressed: () => _updateCoordinatesFromAddress(true),
+                            tooltip: 'Zaktualizuj współrzędne z adresu',
+                          ),
+                        ),
+                        onFieldSubmitted: (_) => _updateCoordinatesFromAddress(true),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Współrzędne: ${_currentStart?.latitude.toStringAsFixed(4)}, ${_currentStart?.longitude.toStringAsFixed(4)}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.flag, color: Colors.red),
-                title: const Text('Koniec:'),
-                subtitle: Text('${widget.end.latitude.toStringAsFixed(4)}, ${widget.end.longitude.toStringAsFixed(4)}'),
+
+              const SizedBox(height: 12),
+
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.flag, color: Colors.red, size: 16),
+                          const SizedBox(width: 8),
+                          Text('Koniec:', style: Theme.of(context).textTheme.titleSmall),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _endAddressController,
+                        decoration: InputDecoration(
+                          labelText: 'Adres końcowy',
+                          suffixIcon: _isLoadingAddresses
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                              : IconButton(
+                            icon: const Icon(Icons.refresh, size: 20),
+                            onPressed: () => _updateCoordinatesFromAddress(false),
+                            tooltip: 'Zaktualizuj współrzędne z adresu',
+                          ),
+                        ),
+                        onFieldSubmitted: (_) => _updateCoordinatesFromAddress(false),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Współrzędne: ${_currentEnd?.latitude.toStringAsFixed(4)}, ${_currentEnd?.longitude.toStringAsFixed(4)}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+
               const Divider(),
               TextFormField(
                 readOnly: true,
@@ -489,7 +726,7 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
           child: const Text('Anuluj'),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_formKey.currentState!.validate()) {
               final timeParts = _timeController.text.split(':');
               final h = int.parse(timeParts[0]);
@@ -509,6 +746,10 @@ class _RouteFormDialogState extends State<RouteFormDialog> {
                   'date': departureDateTime,
                   'seats': _seats,
                   'cost': _cost,
+                  'start': _currentStart ?? widget.start,
+                  'end': _currentEnd ?? widget.end,
+                  'startAddress': _startAddressController.text,
+                  'endAddress': _endAddressController.text,
                 },
               );
             }
