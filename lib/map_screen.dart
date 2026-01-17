@@ -32,6 +32,12 @@ class _MapScreenState extends State<MapScreen> {
 
   final String _apiKey = '5b3ce3597851110001cf6248bc471630a22e479f8bc23ec4a6b5b086';
 
+  Future<int> _getUserRole(User? user) async {
+    if (user == null) return 1;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    return doc.data()?['role'] ?? 1;
+  }
+
   Future<void> _getRoute(LatLng start, LatLng end) async {
     setState(() => _isLoadingRoute = true);
 
@@ -71,7 +77,6 @@ class _MapScreenState extends State<MapScreen> {
             );
 
             double zoom = 10.0;
-
             final latDiff = maxLat - minLat;
             final lngDiff = maxLng - minLng;
             final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
@@ -153,10 +158,10 @@ class _MapScreenState extends State<MapScreen> {
       return box.values
           .where((route) => route.routePoints.isNotEmpty && route.isActive)
           .map((route) => Polyline(
-        points: route.routePoints,
-        color: Colors.blue.withAlpha(128),
-        strokeWidth: 3,
-      ))
+                points: route.routePoints,
+                color: Colors.blue.withAlpha(128),
+                strokeWidth: 3,
+              ))
           .toList();
     } catch (e) {
       return [];
@@ -227,187 +232,204 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa tras'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(52.2297, 21.0122),
-              initialZoom: 6,
-              onTap: (tapPosition, point) {
-                if (_isLoadingRoute) return;
+    return FutureBuilder<int>(
+      future: _getUserRole(user),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-                setState(() {
-                  if (_start == null) {
-                    _start = point;
-                  } else if (_end == null) {
-                    _end = point;
-                    _getRoute(_start!, _end!);
-                  } else {
-                    _start = point;
-                    _end = null;
-                    _routePoints = [];
-                  }
-                  _updateAddresses();
-                });
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.carpooling',
-              ),
-              PolylineLayer(
-                polylines: [
-                  if (_routePoints.isNotEmpty)
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 4,
-                      color: Colors.blue,
-                    ),
-                  ..._buildSavedPolylines(),
-                ],
-              ),
-              MarkerLayer(
-                markers: [
-                  if (_start != null)
-                    Marker(
-                      point: _start!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.location_on, color: Colors.green, size: 30),
-                    ),
-                  if (_end != null)
-                    Marker(
-                      point: _end!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.flag, color: Colors.red, size: 30),
-                    ),
-                  ..._buildSavedMarkers(),
-                ],
-              ),
-            ],
+        final role = snapshot.data!;
+        final isPassenger = role == 1; // 🔹 tylko pasażer rola 1
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Mapa tras'),
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
           ),
-          if (_isLoadingRoute)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Wybierz trasę',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_isLoadingAddress)
-                      const Center(child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ))
-                    else ...[
+          body: Stack(
+            children: [
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: const LatLng(52.2297, 21.0122),
+                  initialZoom: 6,
+                  onTap: (tapPosition, point) {
+                    if (isPassenger || _isLoadingRoute) return;
+
+                    setState(() {
+                      if (_start == null) {
+                        _start = point;
+                      } else if (_end == null) {
+                        _end = point;
+                        _getRoute(_start!, _end!);
+                      } else {
+                        _start = point;
+                        _end = null;
+                        _routePoints = [];
+                      }
+                      _updateAddresses();
+                    });
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.carpooling',
+                  ),
+                  PolylineLayer(
+                    polylines: [
+                      if (_routePoints.isNotEmpty)
+                        Polyline(
+                          points: _routePoints,
+                          strokeWidth: 4,
+                          color: Colors.blue,
+                        ),
+                      ..._buildSavedPolylines(),
+                    ],
+                  ),
+                  MarkerLayer(
+                    markers: [
                       if (_start != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on, color: Colors.green, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text('Start: $_startAddress')),
-                          ],
+                        Marker(
+                          point: _start!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.location_on, color: Colors.green, size: 30),
                         ),
                       if (_end != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.flag, color: Colors.red, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text('Koniec: $_endAddress')),
-                          ],
+                        Marker(
+                          point: _end!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.flag, color: Colors.red, size: 30),
                         ),
-                      if (_start == null)
-                        const Text('Kliknij na mapę, aby wybrać punkt startowy'),
-                      if (_start != null && _end == null)
-                        const Text('Kliknij na mapę, aby wybrać punkt końcowy'),
+                      ..._buildSavedMarkers(),
                     ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: () {
-              setState(() {
-                _start = null;
-                _end = null;
-                _routePoints = [];
-                _startAddress = 'Wybierz punkt startowy';
-                _endAddress = 'Wybierz punkt końcowy';
-              });
-            },
-            label: const Text('Wyczyść'),
-            icon: const Icon(Icons.delete),
-            backgroundColor: Colors.redAccent,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            onPressed: () async {
-              if (user == null) {
-                _showSnackBar('Musisz być zalogowany');
-                return;
-              }
-
-              if (_start != null && _end != null) {
-                if (_routePoints.isEmpty) {
-                  _showSnackBar('Najpierw wyznacz trasę!');
-                  return;
-                }
-
-                final routeData = await showDialog<Map<String, dynamic>>(
-                  context: context,
-                  builder: (context) => RouteFormDialog(
-                    start: _start!,
-                    end: _end!,
-                    routePoints: _routePoints,
-                    onRouteChanged: _refreshRoute,
                   ),
-                );
-
-                if (routeData != null) {
-                  await _saveRouteToFirestore(routeData, user);
-                }
-              } else {
-                _showSnackBar('Wybierz punkt startu i końca!');
-              }
-            },
-            label: const Text('Dodaj trasę'),
-            icon: const Icon(Icons.save),
+                ],
+              ),
+              if (_isLoadingRoute)
+                const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              // 🔹 Etykieta wyboru trasy dla pasażera ukryta
+              if (!isPassenger)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Wybierz trasę',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (_isLoadingAddress)
+                            const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          else ...[
+                            if (_start != null)
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: Colors.green, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text('Start: $_startAddress')),
+                                ],
+                              ),
+                            if (_end != null)
+                              Row(
+                                children: [
+                                  const Icon(Icons.flag, color: Colors.red, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text('Koniec: $_endAddress')),
+                                ],
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!isPassenger)
+                FloatingActionButton.extended(
+                  onPressed: () {
+                    setState(() {
+                      _start = null;
+                      _end = null;
+                      _routePoints = [];
+                      _startAddress = 'Wybierz punkt startowy';
+                      _endAddress = 'Wybierz punkt końcowy';
+                    });
+                  },
+                  label: const Text('Wyczyść'),
+                  icon: const Icon(Icons.delete),
+                  backgroundColor: Colors.redAccent,
+                ),
+              const SizedBox(height: 10),
+              if (!isPassenger)
+                FloatingActionButton.extended(
+                  onPressed: () async {
+                    if (user == null) {
+                      _showSnackBar('Musisz być zalogowany');
+                      return;
+                    }
+
+                    if (_start != null && _end != null) {
+                      if (_routePoints.isEmpty) {
+                        _showSnackBar('Najpierw wyznacz trasę!');
+                        return;
+                      }
+
+                      final routeData = await showDialog<Map<String, dynamic>>(
+                        context: context,
+                        builder: (context) => RouteFormDialog(
+                          start: _start!,
+                          end: _end!,
+                          routePoints: _routePoints,
+                          onRouteChanged: _refreshRoute,
+                        ),
+                      );
+
+                      if (routeData != null) {
+                        await _saveRouteToFirestore(routeData, user);
+                      }
+                    } else {
+                      _showSnackBar('Wybierz punkt startu i końca!');
+                    }
+                  },
+                  label: const Text('Dodaj trasę'),
+                  icon: const Icon(Icons.save),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
+
 
 class RouteFormDialog extends StatefulWidget {
   final LatLng start;
