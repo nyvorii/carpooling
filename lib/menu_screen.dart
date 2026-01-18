@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
-import 'providers/user_mode_provider.dart';
+// Importujemy nasz nowy plik (gdzie jest wszystko dla admina)
+import 'admin_menu_screen.dart';
+
+// Importy dla pasażera/kierowcy
 import 'profile_screen.dart';
 import 'book_screen.dart';
 import 'map_screen.dart';
 import 'driver_bookings_screen.dart';
-import 'available_routes_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -21,8 +23,9 @@ class _MenuScreenState extends State<MenuScreen> {
   int _currentIndex = 0;
 
   Future<int> _getUserRole() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 1; 
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     return doc.data()?['role'] ?? 1;
   }
 
@@ -32,104 +35,76 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final firebaseUser = Provider.of<User?>(context);
-    final userName = firebaseUser?.displayName ?? 'Użytkownik';
-    final userEmail = firebaseUser?.email ?? '';
-
     return FutureBuilder<int>(
       future: _getUserRole(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        final role = snapshot.data!;
-        final canBeDriver = role == 0 || role == 2; // admin lub kierowca
+        final int role = snapshot.data ?? 1;
 
-        final userModeProvider = Provider.of<UserModeProvider>(context);
-        final isDriver = canBeDriver && userModeProvider.isDriverMode;
+        // === JEŚLI ADMIN (0) -> IDŹ DO PLIKU ADMINA ===
+        if (role == 0) {
+          return const AdminMenuScreen();
+        }
 
-        // Lista ekranów pasażera
+        // === LOGIKA DLA KIEROWCY (2) I PASAŻERA (1) ===
+        final bool isDriver = (role == 2);
+        
         final passengerScreens = <Widget>[
           const MapScreen(),
-          if (role != 1) const AvailableRoutesScreen(), // ukryj dla zwykłego usera
           const BookScreen(),
           const ProfileScreen(),
         ];
 
-        // Lista ekranów kierowcy
-        final driverScreens = const [
-          MapScreen(),
-          DriverBookingsScreen(),
-          ProfileScreen(),
+        final driverScreens = <Widget>[
+          const MapScreen(),
+          const DriverBookingsScreen(),
+          const ProfileScreen(),
         ];
 
         final currentScreens = isDriver ? driverScreens : passengerScreens;
 
-        if (_currentIndex >= currentScreens.length) {
-          _currentIndex = 0;
-        }
+        if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
         final themeColor = isDriver ? Colors.green[700]! : Colors.blueAccent;
+        final title = isDriver ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
+
+        final firebaseUser = Provider.of<User?>(context);
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(isDriver ? 'KIEROWCA' : 'PASAŻER'),
+            title: Text(title),
             centerTitle: true,
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
-            actions: [
-              if (canBeDriver)
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 20),
-                    Switch(
-                      value: isDriver,
-                      activeColor: Colors.white,
-                      activeTrackColor: Colors.lightGreenAccent,
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: Colors.blue[200],
-                      onChanged: (value) {
-                        userModeProvider.setDriverMode(value);
-                        setState(() {
-                          _currentIndex = 0;
-                        });
-                      },
-                    ),
-                    const Icon(Icons.drive_eta, size: 20),
-                    const SizedBox(width: 12),
-                  ],
-                ),
-            ],
           ),
           body: currentScreens[_currentIndex],
-          drawer: _buildDrawer(userName, userEmail, themeColor),
+          drawer: _buildDrawer(
+             firebaseUser?.displayName ?? 'Użytkownik', 
+             firebaseUser?.email ?? '', 
+             themeColor
+          ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: _onTabTapped,
             type: BottomNavigationBarType.fixed,
             selectedItemColor: themeColor,
             unselectedItemColor: Colors.grey,
-            items: isDriver
-                ? _buildDriverNavItems()
-                : _buildPassengerNavItems(role),
+            items: isDriver ? _buildDriverNavItems() : _buildPassengerNavItems(),
           ),
         );
       },
     );
   }
 
-  List<BottomNavigationBarItem> _buildPassengerNavItems(int role) {
-    final items = <BottomNavigationBarItem>[
-      const BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Mapa'),
-      if (role != 1)
-        const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Szukaj'), // dodawanie tras
-      const BottomNavigationBarItem(icon: Icon(Icons.confirmation_number), label: 'Rezerwacje'),
-      const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+  List<BottomNavigationBarItem> _buildPassengerNavItems() {
+    return const [
+      BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Mapa'),
+      BottomNavigationBarItem(icon: Icon(Icons.confirmation_number), label: 'Rezerwacje'),
+      BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
     ];
-    return items;
   }
 
   List<BottomNavigationBarItem> _buildDriverNavItems() {
