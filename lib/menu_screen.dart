@@ -8,6 +8,7 @@ import 'profile_screen.dart';
 import 'book_screen.dart';
 import 'map_screen.dart';
 import 'driver_bookings_screen.dart';
+import 'available_routes_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -57,24 +58,24 @@ class _MenuScreenState extends State<MenuScreen> {
         // Interfejs kierowcy pokazujemy TYLKO gdy jest rola 2 ORAZ włączony suwak
         final bool showDriverInterface = canBeDriver && _isDriverMode;
         
-        // --- ZMIANA: PRZEKAZUJEMY Parametr isDriverMode do MapScreen ---
+        // --- LISTY EKRANÓW ---
         
         final passengerScreens = <Widget>[
-          // Pasażer nie może dodawać tras -> isDriverMode: false
-          const MapScreen(isDriverMode: false), 
-          const BookScreen(),
-          const ProfileScreen(),
+          const MapScreen(isDriverMode: false), // Mapa bez edycji
+          const AvailableRoutesScreen(),        // <--- PRZYWRÓCONE SZUKANIE
+          const BookScreen(),                   // Moje rezerwacje
+          const ProfileScreen(),                // Profil
         ];
 
         final driverScreens = <Widget>[
-          // Kierowca może dodawać trasy -> isDriverMode: true
-          const MapScreen(isDriverMode: true),
-          const DriverBookingsScreen(),
-          const ProfileScreen(),
+          const MapScreen(isDriverMode: true),  // Mapa z edycją
+          const DriverBookingsScreen(),         // Pasażerowie (zlecenia)
+          const ProfileScreen(),                // Profil
         ];
 
         final currentScreens = showDriverInterface ? driverScreens : passengerScreens;
 
+        // Zabezpieczenie indeksu przy przełączaniu (żeby nie wywaliło błędu RangeError)
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
         final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;
@@ -97,14 +98,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                     Switch(
                       value: _isDriverMode,
-                      activeColor: Colors.white,
+                      activeThumbColor: Colors.white,
                       activeTrackColor: Colors.lightGreenAccent,
                       inactiveThumbColor: Colors.white,
                       inactiveTrackColor: Colors.blue[200],
                       onChanged: (val) {
                         setState(() {
                           _isDriverMode = val;
-                          _currentIndex = 0; 
+                          _currentIndex = 0;
                         });
                       },
                     ),
@@ -125,6 +126,7 @@ class _MenuScreenState extends State<MenuScreen> {
             type: BottomNavigationBarType.fixed,
             selectedItemColor: themeColor,
             unselectedItemColor: Colors.grey,
+            // Wybór ikon w zależności od trybu
             items: showDriverInterface ? _buildDriverNavItems() : _buildPassengerNavItems(),
           ),
         );
@@ -132,14 +134,17 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  // --- IKONY DLA PASAŻERA (4 sztuki) ---
   List<BottomNavigationBarItem> _buildPassengerNavItems() {
     return const [
       BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Mapa'),
+      BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Szukaj'),
       BottomNavigationBarItem(icon: Icon(Icons.confirmation_number), label: 'Rezerwacje'),
       BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
     ];
   }
 
+  // --- IKONY DLA KIEROWCY (3 sztuki) ---
   List<BottomNavigationBarItem> _buildDriverNavItems() {
     return const [
       BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Mapa'),
