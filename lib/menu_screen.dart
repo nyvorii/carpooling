@@ -3,10 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
-// Importujemy nasz nowy plik (gdzie jest wszystko dla admina)
 import 'admin_menu_screen.dart';
-
-// Importy dla pasażera/kierowcy
 import 'profile_screen.dart';
 import 'book_screen.dart';
 import 'map_screen.dart';
@@ -22,7 +19,7 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   int _currentIndex = 0;
   
-  // Zmienna lokalna do sterowania trybem (tylko dla kierowcy)
+  // Domyślnie włączony tryb kierowcy (jeśli rola na to pozwala)
   bool _isDriverMode = true; 
 
   Future<int> _getUserRole() async {
@@ -49,40 +46,37 @@ class _MenuScreenState extends State<MenuScreen> {
 
         final int role = snapshot.data ?? 1;
 
-        // === 1. JEŚLI ADMIN (0) -> IDŹ DO PLIKU ADMINA ===
+        // === 1. ADMIN ===
         if (role == 0) {
           return const AdminMenuScreen();
         }
 
-        // === 2. LOGIKA DLA KIEROWCY (2) I PASAŻERA (1) ===
-        
-        // Sprawdzamy, czy użytkownik ma uprawnienia kierowcy (Rola 2)
+        // === 2. KIEROWCA / PASAŻER ===
         final bool canBeDriver = (role == 2);
-
-        // Decyzja, jaki interfejs pokazać:
-        // - Jeśli nie jest kierowcą (role 1) -> zawsze false (pasażer)
-        // - Jeśli jest kierowcą (role 2) -> zależy od przełącznika _isDriverMode
+        
+        // Interfejs kierowcy pokazujemy TYLKO gdy jest rola 2 ORAZ włączony suwak
         final bool showDriverInterface = canBeDriver && _isDriverMode;
         
-        // Listy ekranów
+        // --- ZMIANA: PRZEKAZUJEMY Parametr isDriverMode do MapScreen ---
+        
         final passengerScreens = <Widget>[
-          const MapScreen(),
+          // Pasażer nie może dodawać tras -> isDriverMode: false
+          const MapScreen(isDriverMode: false), 
           const BookScreen(),
           const ProfileScreen(),
         ];
 
         final driverScreens = <Widget>[
-          const MapScreen(),
+          // Kierowca może dodawać trasy -> isDriverMode: true
+          const MapScreen(isDriverMode: true),
           const DriverBookingsScreen(),
           const ProfileScreen(),
         ];
 
         final currentScreens = showDriverInterface ? driverScreens : passengerScreens;
 
-        // Zabezpieczenie indeksu przy przełączaniu
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
-        // Ustawienia wyglądu (kolor i tytuł)
         final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;
         final title = showDriverInterface ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
 
@@ -93,7 +87,6 @@ class _MenuScreenState extends State<MenuScreen> {
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
             actions: [
-              // === PRZEŁĄCZNIK TYLKO DLA ROLI 2 ===
               if (canBeDriver) 
                 Row(
                   children: [
@@ -111,7 +104,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       onChanged: (val) {
                         setState(() {
                           _isDriverMode = val;
-                          _currentIndex = 0; // Resetujemy zakładkę, żeby nie było błędu
+                          _currentIndex = 0; 
                         });
                       },
                     ),
