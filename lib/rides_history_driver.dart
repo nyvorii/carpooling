@@ -12,7 +12,7 @@ class RidesHistoryDriverScreen extends StatelessWidget {
           // TUTAJ backend: pobierz przejazdy użytkownika jako kierowca
 
           ListTile(
-            leading: const Icon(Icons.directions_car, color: Colors.blue),
+            leading: const Icon(Icons.directions_car, color: Colors.green),
             title: const Text("Łódź → Warszawa"),
             subtitle: const Text("02.04.2024, 07:30"),
           ),
