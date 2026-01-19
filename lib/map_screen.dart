@@ -248,7 +248,7 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa tras'),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: widget.isDriverMode ? Colors.green[700] : Colors.blueAccent,
         foregroundColor: Colors.white,
       ),
       body: Stack(
