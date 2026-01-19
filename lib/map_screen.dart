@@ -12,7 +12,13 @@ import 'package:geocoding/geocoding.dart';
 import '../services/cached_geocoding_service.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  // 🔹 Dodany parametr isDriverMode
+  final bool isDriverMode;
+
+  const MapScreen({
+    super.key, 
+    this.isDriverMode = false, // Domyślnie false (pasażer)
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -232,147 +238,147 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
 
-    return FutureBuilder<int>(
-      future: _getUserRole(user),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    // Wcześniej używałeś isPassenger z getUserRole, teraz używamy widget.isDriverMode
+    // aby decydować o interfejsie.
+    // Jeśli isDriverMode == false -> traktujemy użytkownika jak pasażera w kontekście mapy.
+    
+    // Sprawdzamy, czy użytkownik może wchodzić w interakcję z mapą (dodawanie punktów)
+    final bool canInteract = widget.isDriverMode; 
 
-        final role = snapshot.data!;
-        final isPassenger = role == 1; // 🔹 tylko pasażer rola 1
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mapa tras'),
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: const LatLng(52.2297, 21.0122),
+              initialZoom: 6,
+              onTap: (tapPosition, point) {
+                // 🔹 BLOKADA: Jeśli nie jest w trybie kierowcy, nie może stawiać punktów
+                if (!canInteract || _isLoadingRoute) return;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Mapa tras'),
-            backgroundColor: Colors.blueAccent,
-            foregroundColor: Colors.white,
-          ),
-          body: Stack(
+                setState(() {
+                  if (_start == null) {
+                    _start = point;
+                  } else if (_end == null) {
+                    _end = point;
+                    _getRoute(_start!, _end!);
+                  } else {
+                    _start = point;
+                    _end = null;
+                    _routePoints = [];
+                  }
+                  _updateAddresses();
+                });
+              },
+            ),
             children: [
-              FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: const LatLng(52.2297, 21.0122),
-                  initialZoom: 6,
-                  onTap: (tapPosition, point) {
-                    if (isPassenger || _isLoadingRoute) return;
-
-                    setState(() {
-                      if (_start == null) {
-                        _start = point;
-                      } else if (_end == null) {
-                        _end = point;
-                        _getRoute(_start!, _end!);
-                      } else {
-                        _start = point;
-                        _end = null;
-                        _routePoints = [];
-                      }
-                      _updateAddresses();
-                    });
-                  },
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.carpooling',
-                  ),
-                  PolylineLayer(
-                    polylines: [
-                      if (_routePoints.isNotEmpty)
-                        Polyline(
-                          points: _routePoints,
-                          strokeWidth: 4,
-                          color: Colors.blue,
-                        ),
-                      ..._buildSavedPolylines(),
-                    ],
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      if (_start != null)
-                        Marker(
-                          point: _start!,
-                          width: 40,
-                          height: 40,
-                          child: const Icon(Icons.location_on, color: Colors.green, size: 30),
-                        ),
-                      if (_end != null)
-                        Marker(
-                          point: _end!,
-                          width: 40,
-                          height: 40,
-                          child: const Icon(Icons.flag, color: Colors.red, size: 30),
-                        ),
-                      ..._buildSavedMarkers(),
-                    ],
-                  ),
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.carpooling',
+              ),
+              PolylineLayer(
+                polylines: [
+                  if (_routePoints.isNotEmpty)
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 4,
+                      color: Colors.blue,
+                    ),
+                  ..._buildSavedPolylines(),
                 ],
               ),
-              if (_isLoadingRoute)
-                const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              // 🔹 Etykieta wyboru trasy dla pasażera ukryta
-              if (!isPassenger)
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Wybierz trasę',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_isLoadingAddress)
-                            const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            )
-                          else ...[
-                            if (_start != null)
-                              Row(
-                                children: [
-                                  const Icon(Icons.location_on, color: Colors.green, size: 16),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text('Start: $_startAddress')),
-                                ],
-                              ),
-                            if (_end != null)
-                              Row(
-                                children: [
-                                  const Icon(Icons.flag, color: Colors.red, size: 16),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text('Koniec: $_endAddress')),
-                                ],
-                              ),
-                          ],
-                        ],
-                      ),
+              MarkerLayer(
+                markers: [
+                  if (_start != null)
+                    Marker(
+                      point: _start!,
+                      width: 40,
+                      height: 40,
+                      child: const Icon(Icons.location_on, color: Colors.green, size: 30),
                     ),
-                  ),
-                ),
+                  if (_end != null)
+                    Marker(
+                      point: _end!,
+                      width: 40,
+                      height: 40,
+                      child: const Icon(Icons.flag, color: Colors.red, size: 30),
+                    ),
+                  ..._buildSavedMarkers(),
+                ],
+              ),
             ],
           ),
-          floatingActionButton: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (!isPassenger)
+          if (_isLoadingRoute)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+            
+          // 🔹 Panel wyboru trasy widoczny TYLKO w trybie kierowcy
+          if (canInteract)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Wybierz trasę',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_isLoadingAddress)
+                        const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else ...[
+                        if (_start != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.green, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text('Start: $_startAddress')),
+                            ],
+                          ),
+                        if (_end != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.flag, color: Colors.red, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text('Koniec: $_endAddress')),
+                            ],
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      
+      // 🔹 PRZYCISKI AKCJI (Wyczyść / Dodaj trasę)
+      // Widoczne TYLKO jeśli widget.isDriverMode == true
+      floatingActionButton: canInteract 
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 FloatingActionButton.extended(
                   onPressed: () {
                     setState(() {
@@ -387,8 +393,7 @@ class _MapScreenState extends State<MapScreen> {
                   icon: const Icon(Icons.delete),
                   backgroundColor: Colors.redAccent,
                 ),
-              const SizedBox(height: 10),
-              if (!isPassenger)
+                const SizedBox(height: 10),
                 FloatingActionButton.extended(
                   onPressed: () async {
                     if (user == null) {
@@ -422,14 +427,12 @@ class _MapScreenState extends State<MapScreen> {
                   label: const Text('Dodaj trasę'),
                   icon: const Icon(Icons.save),
                 ),
-            ],
-          ),
-        );
-      },
+              ],
+            )
+          : null, // Jeśli false (pasażer), brak przycisków
     );
   }
 }
-
 
 class RouteFormDialog extends StatefulWidget {
   final LatLng start;
