@@ -12,7 +12,7 @@ import 'package:geocoding/geocoding.dart';
 import '../services/cached_geocoding_service.dart';
 
 class MapScreen extends StatefulWidget {
-  // 🔹 Dodany parametr isDriverMode
+  // Dodany parametr isDriverMode
   final bool isDriverMode;
 
   const MapScreen({
@@ -259,7 +259,7 @@ class _MapScreenState extends State<MapScreen> {
               initialCenter: const LatLng(52.2297, 21.0122),
               initialZoom: 6,
               onTap: (tapPosition, point) {
-                // 🔹 BLOKADA: Jeśli nie jest w trybie kierowcy, nie może stawiać punktów
+                // BLOKADA: Jeśli nie jest w trybie kierowcy, nie może stawiać punktów
                 if (!canInteract || _isLoadingRoute) return;
 
                 setState(() {
@@ -319,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
               child: CircularProgressIndicator(),
             ),
             
-          // 🔹 Panel wyboru trasy widoczny TYLKO w trybie kierowcy
+          // Panel wyboru trasy widoczny TYLKO w trybie kierowcy
           if (canInteract)
             Positioned(
               top: 16,
@@ -373,7 +373,7 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
       
-      // 🔹 PRZYCISKI AKCJI (Wyczyść / Dodaj trasę)
+      //  PRZYCISKI AKCJI (Wyczyść / Dodaj trasę)
       // Widoczne TYLKO jeśli widget.isDriverMode == true
       floatingActionButton: canInteract 
           ? Column(
