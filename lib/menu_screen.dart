@@ -21,6 +21,9 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   int _currentIndex = 0;
+  
+  // Zmienna lokalna do sterowania trybem (tylko dla kierowcy)
+  bool _isDriverMode = true; 
 
   Future<int> _getUserRole() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -35,6 +38,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final firebaseUser = Provider.of<User?>(context);
+
     return FutureBuilder<int>(
       future: _getUserRole(),
       builder: (context, snapshot) {
@@ -44,14 +49,22 @@ class _MenuScreenState extends State<MenuScreen> {
 
         final int role = snapshot.data ?? 1;
 
-        // === JEŚLI ADMIN (0) -> IDŹ DO PLIKU ADMINA ===
+        // === 1. JEŚLI ADMIN (0) -> IDŹ DO PLIKU ADMINA ===
         if (role == 0) {
           return const AdminMenuScreen();
         }
 
-        // === LOGIKA DLA KIEROWCY (2) I PASAŻERA (1) ===
-        final bool isDriver = (role == 2);
+        // === 2. LOGIKA DLA KIEROWCY (2) I PASAŻERA (1) ===
         
+        // Sprawdzamy, czy użytkownik ma uprawnienia kierowcy (Rola 2)
+        final bool canBeDriver = (role == 2);
+
+        // Decyzja, jaki interfejs pokazać:
+        // - Jeśli nie jest kierowcą (role 1) -> zawsze false (pasażer)
+        // - Jeśli jest kierowcą (role 2) -> zależy od przełącznika _isDriverMode
+        final bool showDriverInterface = canBeDriver && _isDriverMode;
+        
+        // Listy ekranów
         final passengerScreens = <Widget>[
           const MapScreen(),
           const BookScreen(),
@@ -64,14 +77,14 @@ class _MenuScreenState extends State<MenuScreen> {
           const ProfileScreen(),
         ];
 
-        final currentScreens = isDriver ? driverScreens : passengerScreens;
+        final currentScreens = showDriverInterface ? driverScreens : passengerScreens;
 
+        // Zabezpieczenie indeksu przy przełączaniu
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
-        final themeColor = isDriver ? Colors.green[700]! : Colors.blueAccent;
-        final title = isDriver ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
-
-        final firebaseUser = Provider.of<User?>(context);
+        // Ustawienia wyglądu (kolor i tytuł)
+        final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;
+        final title = showDriverInterface ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
 
         return Scaffold(
           appBar: AppBar(
@@ -79,6 +92,33 @@ class _MenuScreenState extends State<MenuScreen> {
             centerTitle: true,
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
+            actions: [
+              // === PRZEŁĄCZNIK TYLKO DLA ROLI 2 ===
+              if (canBeDriver) 
+                Row(
+                  children: [
+                    Icon(
+                      _isDriverMode ? Icons.drive_eta : Icons.person, 
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    Switch(
+                      value: _isDriverMode,
+                      activeColor: Colors.white,
+                      activeTrackColor: Colors.lightGreenAccent,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: Colors.blue[200],
+                      onChanged: (val) {
+                        setState(() {
+                          _isDriverMode = val;
+                          _currentIndex = 0; // Resetujemy zakładkę, żeby nie było błędu
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+            ],
           ),
           body: currentScreens[_currentIndex],
           drawer: _buildDrawer(
@@ -92,7 +132,7 @@ class _MenuScreenState extends State<MenuScreen> {
             type: BottomNavigationBarType.fixed,
             selectedItemColor: themeColor,
             unselectedItemColor: Colors.grey,
-            items: isDriver ? _buildDriverNavItems() : _buildPassengerNavItems(),
+            items: showDriverInterface ? _buildDriverNavItems() : _buildPassengerNavItems(),
           ),
         );
       },
