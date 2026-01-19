@@ -14,7 +14,7 @@ class DriverBookingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Rezerwacje pasażerów"),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
       ),
       body: user == null
