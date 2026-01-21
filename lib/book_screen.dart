@@ -92,7 +92,8 @@ class BookScreen extends StatelessWidget {
                         );
                       }
 
-                      final routeData = routeSnapshot.data!.data() as Map<String, dynamic>;
+                      final routeData = routeSnapshot.data!;
+                      final route = RouteModel.fromFirestore(routeData);
 
                       return Card(
                         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -100,7 +101,7 @@ class BookScreen extends StatelessWidget {
                         child: ListTile(
                           leading: const Icon(Icons.directions_car_filled, color: Colors.blueAccent),
                           title: FutureBuilder<Map<String, String>>(
-                            future: _getRouteAddresses(routeData),
+                            future: _getRouteAddresses(route.toFirestore()),
                             builder: (context, addressSnapshot) {
                               if (addressSnapshot.connectionState == ConnectionState.waiting) {
                                 return const Text('Ładowanie trasy...');
@@ -118,12 +119,12 @@ class BookScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 4),
-                              Text('Data: ${_formatDate((routeData['date'] as Timestamp).toDate())}'),
+                              Text('Data: ${_formatDate(route.date)}'),
                               Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
                               Text('Miejsca: ${booking.seatsBooked}'),
-                              Text('Kierowca: ${routeData['driverName'] ?? 'Nieznany'}'),
+                              Text('Kierowca: ${route.driverName}'),
                               FutureBuilder<Map<String, String>>(
-                                future: _getRouteAddresses(routeData),
+                                future: _getRouteAddresses(route.toFirestore()),
                                 builder: (context, addressSnapshot) {
                                   if (addressSnapshot.connectionState == ConnectionState.waiting) {
                                     return const Text('Ładowanie adresów...');
@@ -139,10 +140,10 @@ class BookScreen extends StatelessWidget {
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.cancel, color: Colors.red),
-                            onPressed: () => _showCancelDialog(context, booking, routeData, bookingService),
+                            onPressed: () => _showCancelDialog(context, booking, route, bookingService),
                           ),
                           onTap: () {
-                            _showBookingDetails(context, booking, routeData);
+                            _showBookingDetails(context, booking, route);
                           },
                         ),
                       );
@@ -222,7 +223,7 @@ class BookScreen extends StatelessWidget {
     return '${date.day}.${date.month}.${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _showCancelDialog(BuildContext context, BookingModel booking, Map<String, dynamic> routeData, BookingService bookingService) {
+  void _showCancelDialog(BuildContext context, BookingModel booking, RouteModel route, BookingService bookingService) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -236,21 +237,6 @@ class BookScreen extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-
-              // Utwórz tymczasowy RouteModel dla anulowania
-              final startData = routeData['start'] as Map<String, dynamic>;
-              final endData = routeData['end'] as Map<String, dynamic>;
-
-              final route = RouteModel(
-                start: LatLng(startData['lat'], startData['lng']),
-                end: LatLng(endData['lat'], endData['lng']),
-                date: (routeData['date'] as Timestamp).toDate(),
-                seats: routeData['seats'] ?? 1,
-                routePoints: [],
-                driverId: routeData['driverId'] ?? '',
-                driverName: routeData['driverName'] ?? '',
-                totalCost: (routeData['totalCost'] ?? 0.0).toDouble(),
-              );
 
               final success = await bookingService.cancelBooking(booking.id, route);
 
@@ -277,13 +263,13 @@ class BookScreen extends StatelessWidget {
     );
   }
 
-  void _showBookingDetails(BuildContext context, BookingModel booking, Map<String, dynamic> routeData) {
+  void _showBookingDetails(BuildContext context, BookingModel booking, RouteModel route) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Szczegóły rezerwacji'),
         content: FutureBuilder<Map<String, String>>(
-          future: _getRouteAddresses(routeData),
+          future: _getRouteAddresses(route.toFirestore()),
           builder: (context, addressSnapshot) {
             if (addressSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -298,13 +284,13 @@ class BookScreen extends StatelessWidget {
                 children: [
                   Text('Trasa: ${addresses['start']} → ${addresses['end']}'),
                   const SizedBox(height: 8),
-                  Text('Data: ${_formatDate((routeData['date'] as Timestamp).toDate())}'),
+                  Text('Data: ${_formatDate(route.date)}'),
                   const SizedBox(height: 8),
                   Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
                   const SizedBox(height: 8),
                   Text('Miejsca: ${booking.seatsBooked}'),
                   const SizedBox(height: 8),
-                  Text('Kierowca: ${routeData['driverName'] ?? 'Nieznany'}'),
+                  Text('Kierowca: ${route.driverName}'),
                   const SizedBox(height: 8),
                   Text('Status: ${_getStatusText(booking.status)}'),
                   const SizedBox(height: 8),
