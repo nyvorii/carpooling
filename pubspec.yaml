@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  url_launcher: ^6.2.5
   flutter_map: ^7.0.0
   latlong2: ^0.9.0
   http: ^1.1.0
