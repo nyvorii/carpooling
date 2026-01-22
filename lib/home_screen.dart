@@ -65,6 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
       await userDoc.set({
         'uid': user.uid,
         'email': user.email,
+        'contactEmail': user.email,
+        'contactPhone': '',
         'displayName': user.displayName,
         'photoURL': user.photoURL,
         'role': 1, // 👤 zwykły użytkownik
@@ -80,6 +82,18 @@ class _HomeScreenState extends State<HomeScreen> {
           'role': 1,
         });
       }
+      if (!data.containsKey('contactEmail')) {
+        await userDoc.update({
+          'contactEmail': data['email'],
+        });
+      }
+
+      if (!data.containsKey('contactPhone')) {
+        await userDoc.update({
+          'contactPhone': '',
+        });
+      }
+
 
       // aktualizacja logowania
       await userDoc.update({
