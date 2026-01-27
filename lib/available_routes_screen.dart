@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/booking_service.dart';
 import '../models/route_model.dart';
-import '../services/cached_geocoding_service.dart'; // DODAJ
+import '../services/cached_geocoding_service.dart';
+import '../models/route_filters_model.dart';
 
 class AvailableRoutesScreen extends StatefulWidget {
   const AvailableRoutesScreen({super.key});
@@ -18,10 +19,228 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
   bool _isLoadingStats = false;
   final CachedGeocodingService _geocodingService = CachedGeocodingService();
 
+  RouteFilters _activeFilters = RouteFilters.defaultFilters;
+  bool _showFilters = false;
+  final TextEditingController _maxPriceController = TextEditingController();
+  final TextEditingController _minRatingController = TextEditingController();
+  DateTime? _selectedDateFrom;
+  DateTime? _selectedDateTo;
+  int _selectedMinSeats = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRouteStats();
+  }
+
+  @override
+  void dispose() {
+    _maxPriceController.dispose();
+    _minRatingController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadRouteStats() async {
     setState(() => _isLoadingStats = true);
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _isLoadingStats = false);
+  }
+
+  // odleglosc miedzy dystansami
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    const Distance distance = Distance();
+    return distance.as(LengthUnit.Kilometer, point1, point2);
+  }
+
+  // funckcja dla filtrow
+  List<RouteModel> _applyFilters(List<RouteModel> routes) {
+    if (!_activeFilters.hasFilters) return routes;
+
+    return routes.where((route) {
+      // fffiltr daty
+      if (_activeFilters.dateFrom != null &&
+          route.date.isBefore(_activeFilters.dateFrom!)) {
+        return false;
+      }
+      if (_activeFilters.dateTo != null &&
+          route.date.isAfter(_activeFilters.dateTo!)) {
+        return false;
+      }
+
+      // filtr ceny
+      if (_activeFilters.maxPrice != null &&
+          route.totalCost > _activeFilters.maxPrice!) {
+        return false;
+      }
+
+      // filtr dostępnych miejsc
+      if (_activeFilters.minSeats != null &&
+          route.availableSeats < _activeFilters.minSeats!) {
+        return false;
+      }
+
+      // filtr odleglosci (jesli znami lokalizacje uzytkownika)
+      if (_activeFilters.userLocation != null &&
+          _activeFilters.searchRadiusKm != null) {
+        final distanceToStart = _calculateDistance(
+            _activeFilters.userLocation!,
+            route.start
+        );
+        if (distanceToStart > _activeFilters.searchRadiusKm!) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  Future<void> _showFilterDialog(BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filtruj trasy',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // data od
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(
+                      _selectedDateFrom == null
+                          ? 'Data od (dowolna)'
+                          : 'Od: ${_selectedDateFrom!.day}.${_selectedDateFrom!.month}.${_selectedDateFrom!.year}',
+                    ),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setState(() => _selectedDateFrom = date);
+                      }
+                    },
+                  ),
+
+                  // data do
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(
+                      _selectedDateTo == null
+                          ? 'Data do (dowolna)'
+                          : 'Do: ${_selectedDateTo!.day}.${_selectedDateTo!.month}.${_selectedDateTo!.year}',
+                    ),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(const Duration(days: 7)),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setState(() => _selectedDateTo = date);
+                      }
+                    },
+                  ),
+
+                  const Divider(),
+
+                  // cena
+                  TextField(
+                    controller: _maxPriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Maksymalna cena (PLN)',
+                      prefixIcon: Icon(Icons.attach_money),
+                      hintText: 'np. 50.00',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // minimalna ilosc miejsc
+                  DropdownButtonFormField<int>(
+                    value: _selectedMinSeats,
+                    decoration: const InputDecoration(
+                      labelText: 'Minimalna liczba miejsc',
+                      prefixIcon: Icon(Icons.people),
+                    ),
+                    items: [1, 2, 3, 4, 5, 6, 7, 8]
+                        .map((seats) => DropdownMenuItem(
+                      value: seats,
+                      child: Text('$seats ${seats == 1 ? 'miejsce' : 'miejsca'}'),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedMinSeats = value);
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // przyciski
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          // czysc filtry
+                          setState(() {
+                            _selectedDateFrom = null;
+                            _selectedDateTo = null;
+                            _maxPriceController.clear();
+                            _selectedMinSeats = 1;
+                          });
+                        },
+                        child: const Text('Wyczyść'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          // zastosowanie filtrow
+                          _activeFilters = RouteFilters(
+                            dateFrom: _selectedDateFrom,
+                            dateTo: _selectedDateTo,
+                            maxPrice: _maxPriceController.text.isNotEmpty
+                                ? double.tryParse(_maxPriceController.text)
+                                : null,
+                            minSeats: _selectedMinSeats,
+                          );
+                          Navigator.pop(context);
+                          setState(() => _showFilters = _activeFilters.hasFilters);
+                        },
+                        child: const Text('Zastosuj filtry'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<String> _getRouteTitle(RouteModel route) async {
@@ -76,6 +295,43 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}.${date.month}.${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatPrice(double price) {
+    return '${price.toStringAsFixed(2)} PLN';
+  }
+
+  Widget _buildActiveFiltersIndicator() {
+    if (!_activeFilters.hasFilters) return const SizedBox.shrink();
+
+    int filterCount = 0;
+    if (_activeFilters.dateFrom != null) filterCount++;
+    if (_activeFilters.dateTo != null) filterCount++;
+    if (_activeFilters.maxPrice != null) filterCount++;
+    if (_activeFilters.minSeats != null && _activeFilters.minSeats! > 1) filterCount++;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.blueAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.filter_alt, size: 16, color: Colors.blueAccent),
+          const SizedBox(width: 4),
+          Text(
+            '$filterCount ${filterCount == 1 ? 'filtr' : 'filtry'}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.blueAccent,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showBookingDialog(BuildContext context, RouteModel route,
@@ -154,7 +410,13 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Dostępne trasy"),
+        title: Row(
+          children: [
+            const Text("Dostępne trasy"),
+            const SizedBox(width: 8),
+            _buildActiveFiltersIndicator(),
+          ],
+        ),
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
         actions: [
@@ -168,6 +430,31 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
               icon: const Icon(Icons.refresh),
               onPressed: _loadRouteStats,
             ),
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.filter_alt),
+                if (_activeFilters.hasFilters)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 12,
+                        minHeight: 12,
+                      ),
+                      child: const SizedBox(),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () => _showFilterDialog(context),
+          ),
         ],
       ),
       body: StreamBuilder<List<RouteModel>>(
@@ -208,102 +495,159 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search_off, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
+                  const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
                     'Brak dostępnych tras',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
-                  SizedBox(height: 8),
-                  Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     'Sprawdź później lub dodaj własną trasę',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
+                  if (_activeFilters.hasFilters)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _activeFilters = RouteFilters.defaultFilters;
+                            _selectedDateFrom = null;
+                            _selectedDateTo = null;
+                            _maxPriceController.clear();
+                            _selectedMinSeats = 1;
+                          });
+                        },
+                        child: const Text('Wyczyść filtry'),
+                      ),
+                    ),
                 ],
               ),
             );
           }
-          final routes = snapshot.data!;
 
-          return ListView.builder(
-            itemCount: routes.length,
-            itemBuilder: (context, index) {
-              final route = routes[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                elevation: 2,
-                child: ListTile(
-                  leading: const Icon(Icons.directions_car, color: Colors.blue),
-                  title: FutureBuilder<String>(
-                    future: _getRouteTitle(route),
-                    builder: (context, titleSnapshot) {
-                      if (titleSnapshot.connectionState == ConnectionState.waiting) {
-                        return Row(
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
+          final allRoutes = snapshot.data!;
+          final filteredRoutes = _applyFilters(allRoutes);
 
-                      if (titleSnapshot.hasError) {
-                        return Text(
-                          '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-                        );
-                      }
-
-                      return Text(
-                        titleSnapshot.data ?? '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      );
-                    },
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
+            children: [
+              if (_activeFilters.hasFilters && filteredRoutes.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.blueAccent.withOpacity(0.05),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Data: ${_formatDate(route.date)}'),
-                      Text('Kierowca: ${route.driverName}'),
-                      Text('Koszt: ${route.totalCost.toStringAsFixed(2)} PLN'),
-                      Text('Miejsca: ${route.availableSeats}/${route.seats}'),
-                      FutureBuilder<String>(
-                        future: _getFullAddress(route),
-                        builder: (context, addressSnapshot) {
-                          if (addressSnapshot.connectionState == ConnectionState.waiting) {
-                            return const Text('Ładowanie szczegółów...');
-                          }
-                          return Text(
-                            addressSnapshot.data ?? _formatLocation(route.end),
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          );
+                      Text(
+                        'Znaleziono ${filteredRoutes.length} z ${allRoutes.length} tras',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _activeFilters = RouteFilters.defaultFilters;
+                            _selectedDateFrom = null;
+                            _selectedDateTo = null;
+                            _maxPriceController.clear();
+                            _selectedMinSeats = 1;
+                          });
                         },
+                        child: const Text(
+                          'Wyczyść filtry',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                     ],
                   ),
-                  trailing: user != null
-                      ? ElevatedButton(
-                    onPressed: () => _showBookingDialog(
-                        context, route, bookingService, user),
-                    child: const Text('Rezerwuj'),
-                  )
-                      : const Text('Zaloguj się'),
                 ),
-              );
-            },
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredRoutes.length,
+                  itemBuilder: (context, index) {
+                    final route = filteredRoutes[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      elevation: 2,
+                      child: ListTile(
+                        leading: const Icon(Icons.directions_car, color: Colors.blue),
+                        title: FutureBuilder<String>(
+                          future: _getRouteTitle(route),
+                          builder: (context, titleSnapshot) {
+                            if (titleSnapshot.connectionState == ConnectionState.waiting) {
+                              return Row(
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            if (titleSnapshot.hasError) {
+                              return Text(
+                                '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                              );
+                            }
+
+                            return Text(
+                              titleSnapshot.data ?? '${_formatLocation(route.start)} → ${_formatLocation(route.end)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            );
+                          },
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('📅 ${_formatDate(route.date)}'),
+                            Text('👤 Kierowca: ${route.driverName}'),
+                            Text('💰 Koszt: ${_formatPrice(route.totalCost)}'),
+                            Text('🪑 Miejsca: ${route.availableSeats}/${route.seats}'),
+                            FutureBuilder<String>(
+                              future: _getFullAddress(route),
+                              builder: (context, addressSnapshot) {
+                                if (addressSnapshot.connectionState == ConnectionState.waiting) {
+                                  return const Text('Ładowanie szczegółów...');
+                                }
+                                return Text(
+                                  addressSnapshot.data ?? _formatLocation(route.end),
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        trailing: user != null
+                            ? ElevatedButton(
+                          onPressed: () => _showBookingDialog(
+                              context, route, bookingService, user),
+                          child: const Text('Rezerwuj'),
+                        )
+                            : const Text('Zaloguj się'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
