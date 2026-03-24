@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 import 'home_screen.dart'; // Potrzebne do przekierowania po wylogowaniu
+import 'admin_applications_screen.dart';
 
 class AdminMenuScreen extends StatefulWidget {
   const AdminMenuScreen({super.key});
@@ -290,24 +291,7 @@ class AdminUsersScreen extends StatelessWidget {
 // EKRAN 2: ZGŁOSZENIA
 // ==================================================================
 
-class AdminApplicationsScreen extends StatelessWidget {
-  const AdminApplicationsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.assignment_turned_in, size: 60, color: Colors.grey),
-          SizedBox(height: 16),
-          Text("Lista zgłoszeń na kierowcę", style: TextStyle(fontSize: 18)),
-          Text("(Tu podepniesz kolekcję 'driver_applications')"),
-        ],
-      ),
-    );
-  }
-}
+// przeniesione do admin_application_screen.dart
 
 // ==================================================================
 // EKRAN 3: PROFIL ADMINA (NOWA WERSJA)

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:carpooling/driver_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -169,6 +170,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               MaterialPageRoute(builder: (_) => const MyVehiclesScreen()),
             );
           },
+        ),
+        ListTile(
+          leading: const Icon(Icons.directions_car_outlined),
+          title: const Text('Aplikuj na Kierowcę'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DriverFormScreen()),
+            );
+          }
         ),
         ListTile(
           leading: const Icon(Icons.settings_outlined),
