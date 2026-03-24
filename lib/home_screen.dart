@@ -38,6 +38,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
       await _saveUserToFirestore(user);
 
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final isBlocked = doc.data()?['isBlocked'] ?? false;
+
+      if (isBlocked) {
+        await FirebaseAuth.instance.signOut();
+        await _googleSignIn.signOut();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Twoje konto zostało zablokowane przez administratora."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -69,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'contactPhone': '',
         'displayName': user.displayName,
         'photoURL': user.photoURL,
+        'isBlocked': false,
         'role': 1, // 👤 zwykły użytkownik
         'createdAt': FieldValue.serverTimestamp(),
         'lastLogin': FieldValue.serverTimestamp(),
@@ -87,7 +110,11 @@ class _HomeScreenState extends State<HomeScreen> {
           'contactEmail': data['email'],
         });
       }
-
+      if (!data.containsKey('isBlocked')) {
+        await userDoc.update({
+          'isBlocked': false,
+        });
+      }
       if (!data.containsKey('contactPhone')) {
         await userDoc.update({
           'contactPhone': '',
