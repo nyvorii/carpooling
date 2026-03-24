@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "353303140418-d94qdhivd0oqevm7ut9i7ib44kckpdpo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "5c0fa37ac5d9e917175bffa08824cfd3c2206f15"
+          }
+        },
+        {
+          "client_id": "353303140418-d9m2l4g5qosprq1l45knsdtu1ipksihj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "7b109e9f71f04bcbe395db50f525939533a1343d"
+          }
+        },
+        {
           "client_id": "353303140418-dr8pa5p6j2n8erj3dbvtt383mu8h7omv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -35,6 +51,38 @@
           "android_info": {
             "package_name": "com.example.carpooling",
             "certificate_hash": "94fc8e6b2a0154be4b3cfe321254eba8bf2c3166"
+          }
+        },
+        {
+          "client_id": "353303140418-ofbnqplumvk90lnkn0m7c45r9j3ilttl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "ff73b289fa829d5321824989c726c08a395ac77e"
+          }
+        },
+        {
+          "client_id": "353303140418-s757v1p1asqbhp69993ucupi32vku6jh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "874ba21bbb17974c0b5418c0f6f893baf3e0684f"
+          }
+        },
+        {
+          "client_id": "353303140418-sv64ghosjda1575h9ckdnn145prbglo2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "9923288ede9e49c9b8114a0a70256f825bf12781"
+          }
+        },
+        {
+          "client_id": "353303140418-ucbf2iebfer514ap1bnlrkff11ac5sbk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "69bf37bc88949b5403c8571c8a4782df7543b3ba"
           }
         },
         {
