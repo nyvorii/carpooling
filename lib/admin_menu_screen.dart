@@ -110,17 +110,50 @@ class AdminUsersScreen extends StatelessWidget {
     }
   }
 
-  void _showEditRoleDialog(BuildContext context, String uid, int currentRole, String email) {
+  void _showEditRoleDialog(BuildContext context, String uid, int currentRole, String email,bool isBlocked) {
     showDialog(
       context: context,
       builder: (context) {
-        return SimpleDialog(
-          title: Text('Zmień rolę dla:\n$email'),
-          children: [
-            _buildRoleOption(context, uid, 1, 'Pasażer', currentRole),
-            _buildRoleOption(context, uid, 2, 'Kierowca', currentRole),
-            _buildRoleOption(context, uid, 0, 'Admin', currentRole),
-          ],
+        return AlertDialog(
+          title: Text('Edycja użytkownika:\n$email'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Rola:", style: TextStyle(fontWeight: FontWeight.bold)),
+              _buildRoleOption(context, uid, 1, 'Pasażer', currentRole),
+              _buildRoleOption(context, uid, 2, 'Kierowca', currentRole),
+              _buildRoleOption(context, uid, 0, 'Admin', currentRole),
+
+              const SizedBox(height: 20),
+
+              const Divider(),
+
+              const Text("Status konta:", style: TextStyle(fontWeight: FontWeight.bold)),
+
+              SwitchListTile(
+                title: Text(isBlocked ? "Konto zablokowane" : "Konto aktywne"),
+                value: isBlocked,
+                onChanged: (value) async {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .update({
+                    'isBlocked': value,
+                  });
+
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        value ? "Konto zablokowane" : "Konto aktywowane",
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -205,7 +238,9 @@ class AdminUsersScreen extends StatelessWidget {
             final doc = users[index];
             final userData = doc.data() as Map<String, dynamic>;
             
+            final isBlocked = userData['isBlocked'] ?? false;
             final email = userData['email'] ?? 'Brak email';
+            final displayName = userData['displayName'] ?? 'Brak nazwy';
             final role = userData['role'] ?? 1;
             final uid = doc.id;
 
@@ -216,14 +251,25 @@ class AdminUsersScreen extends StatelessWidget {
                   role == 0 ? Icons.admin_panel_settings : (role == 2 ? Icons.drive_eta : Icons.person),
                   color: role == 0 ? Colors.red : (role == 2 ? Colors.green : Colors.blue),
                 ),
-                title: Text(email, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text("Rola: ${_getRoleName(role)}"),
+                title: Text(
+                  displayName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  "$email\nRola: ${_getRoleName(role)}",
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Icon(
+                      isBlocked ? Icons.block : Icons.check_circle,
+                      color: isBlocked ? Colors.red : Colors.green,
+                    ),
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.orange),
-                      onPressed: () => _showEditRoleDialog(context, uid, role, email),
+                      onPressed: () => _showEditRoleDialog(
+                        context, uid, role, email, isBlocked
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
