@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 class RouteFilters {
@@ -9,6 +10,8 @@ class RouteFilters {
   double? maxDistance;
   LatLng? userLocation;
   double? searchRadiusKm;
+  TimeOfDay? timeFrom;
+  TimeOfDay? timeTo;
 
   RouteFilters({
     this.dateFrom,
@@ -19,6 +22,8 @@ class RouteFilters {
     this.maxDistance,
     this.userLocation,
     this.searchRadiusKm,
+    this.timeFrom,
+    this.timeTo,
   });
 
   bool get hasFilters {
@@ -28,6 +33,8 @@ class RouteFilters {
         minSeats != null ||
         minRating != null ||
         maxDistance != null ||
+        timeFrom != null ||
+        timeTo != null ||
         (userLocation != null && searchRadiusKm != null);
   }
 
@@ -40,6 +47,8 @@ class RouteFilters {
     double? maxDistance,
     LatLng? userLocation,
     double? searchRadiusKm,
+    TimeOfDay? timeFrom,
+    TimeOfDay? timeTo,
   }) {
     return RouteFilters(
       dateFrom: dateFrom ?? this.dateFrom,
@@ -50,6 +59,8 @@ class RouteFilters {
       maxDistance: maxDistance ?? this.maxDistance,
       userLocation: userLocation ?? this.userLocation,
       searchRadiusKm: searchRadiusKm ?? this.searchRadiusKm,
+      timeFrom: timeFrom ?? this.timeFrom,
+      timeTo: timeTo ?? this.timeTo,
     );
   }
 
