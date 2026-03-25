@@ -48,4 +48,3 @@ class GeocodingCacheAdapter extends TypeAdapter<GeocodingCache> {
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
-

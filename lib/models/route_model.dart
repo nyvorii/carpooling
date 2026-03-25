@@ -48,6 +48,9 @@ class RouteModel {
   @HiveField(13)
   String endAddress;
 
+  @HiveField(14)
+  double driverRating;
+
   RouteModel({
     this.id = '',
     LatLng? start,
@@ -63,6 +66,7 @@ class RouteModel {
     this.isActive = true,
     this.startAddress = '',
     this.endAddress = '',
+    this.driverRating = 0.0,
   })  : start = start ?? const LatLng(0, 0),
         end = end ?? const LatLng(0, 0),
         date = date ?? DateTime.now();
@@ -88,6 +92,7 @@ class RouteModel {
       {'lat': point.latitude, 'lng': point.longitude}).toList(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      'driverRating': driverRating,
     };
   }
 
@@ -112,6 +117,7 @@ class RouteModel {
       isActive: data['isActive'] ?? true,
       startAddress: data['startAddress'] ?? '',
       endAddress: data['endAddress'] ?? '',
+      driverRating: (data['driverRating'] ?? 0.0).toDouble(),
     );
   }
 }

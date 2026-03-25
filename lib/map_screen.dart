@@ -206,6 +206,9 @@ class _MapScreenState extends State<MapScreen> {
       final start = routeData['start'] as LatLng? ?? _start!;
       final end = routeData['end'] as LatLng? ?? _end!;
 
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final driverRating = (userDoc.data()?['averageRating'] ?? 0.0).toDouble();
+
       final route = RouteModel(
         id: routeId,
         start: start,
@@ -221,6 +224,7 @@ class _MapScreenState extends State<MapScreen> {
         isActive: true,
         startAddress: routeData['startAddress'] as String? ?? '',
         endAddress: routeData['endAddress'] as String? ?? '',
+        driverRating: driverRating,
       );
 
       await firestore.collection('routes').doc(routeId).set(route.toFirestore());

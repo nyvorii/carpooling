@@ -26,6 +26,9 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
   DateTime? _selectedDateFrom;
   DateTime? _selectedDateTo;
   int _selectedMinSeats = 1;
+  TimeOfDay? _selectedTimeFrom;
+  TimeOfDay? _selectedTimeTo;
+  double _selectedMinRating = 0.0;
 
   @override
   void initState() {
@@ -52,6 +55,14 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
     return distance.as(LengthUnit.Kilometer, point1, point2);
   }
 
+  bool _isTimeBefore(TimeOfDay t1, TimeOfDay t2) {
+    return t1.hour < t2.hour || (t1.hour == t2.hour && t1.minute < t2.minute);
+  }
+
+  bool _isTimeAfter(TimeOfDay t1, TimeOfDay t2) {
+    return t1.hour > t2.hour || (t1.hour == t2.hour && t1.minute > t2.minute);
+  }
+
   // funckcja dla filtrow
   List<RouteModel> _applyFilters(List<RouteModel> routes) {
     if (!_activeFilters.hasFilters) return routes;
@@ -67,6 +78,17 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
         return false;
       }
 
+      // filtr czasu
+      final routeTime = TimeOfDay.fromDateTime(route.date);
+      if (_activeFilters.timeFrom != null &&
+          _isTimeBefore(routeTime, _activeFilters.timeFrom!)) {
+        return false;
+      }
+      if (_activeFilters.timeTo != null &&
+          _isTimeAfter(routeTime, _activeFilters.timeTo!)) {
+        return false;
+      }
+
       // filtr ceny
       if (_activeFilters.maxPrice != null &&
           route.totalCost > _activeFilters.maxPrice!) {
@@ -76,6 +98,12 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
       // filtr dostępnych miejsc
       if (_activeFilters.minSeats != null &&
           route.availableSeats < _activeFilters.minSeats!) {
+        return false;
+      }
+
+      // filtr oceny kierowcy
+      if (_activeFilters.minRating != null &&
+          route.driverRating < _activeFilters.minRating!) {
         return false;
       }
 
@@ -109,132 +137,196 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
                 right: 16,
                 top: 16,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Filtruj trasy',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // data od
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: Text(
-                      _selectedDateFrom == null
-                          ? 'Data od (dowolna)'
-                          : 'Od: ${_selectedDateFrom!.day}.${_selectedDateFrom!.month}.${_selectedDateFrom!.year}',
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filtruj trasy',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (date != null) {
-                        setState(() => _selectedDateFrom = date);
-                      }
-                    },
-                  ),
+                    const SizedBox(height: 20),
 
-                  // data do
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: Text(
-                      _selectedDateTo == null
-                          ? 'Data do (dowolna)'
-                          : 'Do: ${_selectedDateTo!.day}.${_selectedDateTo!.month}.${_selectedDateTo!.year}',
+                    // data od
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today),
+                      title: Text(
+                        _selectedDateFrom == null
+                            ? 'Data od (dowolna)'
+                            : 'Od: ${_selectedDateFrom!.day}.${_selectedDateFrom!.month}.${_selectedDateFrom!.year}',
+                      ),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (date != null) {
+                          setState(() => _selectedDateFrom = date);
+                        }
+                      },
                     ),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now().add(const Duration(days: 7)),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (date != null) {
-                        setState(() => _selectedDateTo = date);
-                      }
-                    },
-                  ),
+
+                    // data do
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today),
+                      title: Text(
+                        _selectedDateTo == null
+                            ? 'Data do (dowolna)'
+                            : 'Do: ${_selectedDateTo!.day}.${_selectedDateTo!.month}.${_selectedDateTo!.year}',
+                      ),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (date != null) {
+                          setState(() => _selectedDateTo = date);
+                        }
+                      },
+                    ),
 
                   const Divider(),
 
-                  // cena
-                  TextField(
-                    controller: _maxPriceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Maksymalna cena (PLN)',
-                      prefixIcon: Icon(Icons.attach_money),
-                      hintText: 'np. 50.00',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // minimalna ilosc miejsc
-                  DropdownButtonFormField<int>(
-                    value: _selectedMinSeats,
-                    decoration: const InputDecoration(
-                      labelText: 'Minimalna liczba miejsc',
-                      prefixIcon: Icon(Icons.people),
-                    ),
-                    items: [1, 2, 3, 4, 5, 6, 7, 8]
-                        .map((seats) => DropdownMenuItem(
-                      value: seats,
-                      child: Text('$seats ${seats == 1 ? 'miejsce' : 'miejsca'}'),
-                    ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedMinSeats = value);
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // przyciski
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          // czysc filtry
-                          setState(() {
-                            _selectedDateFrom = null;
-                            _selectedDateTo = null;
-                            _maxPriceController.clear();
-                            _selectedMinSeats = 1;
-                          });
-                        },
-                        child: const Text('Wyczyść'),
+                    // od czasu
+                    ListTile(
+                      leading: const Icon(Icons.access_time),
+                      title: Text(
+                        _selectedTimeFrom == null
+                            ? 'Od godziny (dowolna)'
+                            : 'Od: ${_selectedTimeFrom!.format(context)}',
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          // zastosowanie filtrow
-                          _activeFilters = RouteFilters(
-                            dateFrom: _selectedDateFrom,
-                            dateTo: _selectedDateTo,
-                            maxPrice: _maxPriceController.text.isNotEmpty
-                                ? double.tryParse(_maxPriceController.text)
-                                : null,
-                            minSeats: _selectedMinSeats,
-                          );
-                          Navigator.pop(context);
-                          setState(() => _showFilters = _activeFilters.hasFilters);
-                        },
-                        child: const Text('Zastosuj filtry'),
-                      ),
-                    ],
-                  ),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setState(() => _selectedTimeFrom = time);
+                        }
+                      },
+                    ),
 
-                  const SizedBox(height: 16),
-                ],
+                    // do czasu
+                    ListTile(
+                      leading: const Icon(Icons.access_time),
+                      title: Text(
+                        _selectedTimeTo == null
+                            ? 'Do godziny (dowolna)'
+                            : 'Do: ${_selectedTimeTo!.format(context)}',
+                      ),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setState(() => _selectedTimeTo = time);
+                        }
+                      },
+                    ),
+
+                    const Divider(),
+
+                    // cena maksymalna
+                    TextField(
+                      controller: _maxPriceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Maksymalna cena (PLN)',
+                        prefixIcon: Icon(Icons.attach_money),
+                        hintText: 'np. 50.00',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // minimalna ilosc miejsc
+                    DropdownButtonFormField<int>(
+                      value: _selectedMinSeats,
+                      decoration: const InputDecoration(
+                        labelText: 'Minimalna liczba miejsc',
+                        prefixIcon: Icon(Icons.people),
+                      ),
+                      items: [1, 2, 3, 4, 5, 6, 7, 8]
+                          .map((seats) => DropdownMenuItem(
+                        value: seats,
+                        child: Text('$seats ${seats == 1 ? 'miejsce' : 'miejsca'}'),
+                      ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _selectedMinSeats = value);
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // minimalna ocena kierowcy
+                    const Text('Minimalna ocena kierowcy'),
+                    Slider(
+                      value: _selectedMinRating,
+                      min: 0,
+                      max: 5,
+                      divisions: 10,
+                      label: _selectedMinRating.toStringAsFixed(1),
+                      onChanged: (value) {
+                        setState(() => _selectedMinRating = value);
+                      },
+                    ),
+                    Text('Ocena ≥ ${_selectedMinRating.toStringAsFixed(1)}'),
+
+                    const SizedBox(height: 24),
+
+                    // przyciski
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            // czysc filtry
+                            setState(() {
+                              _selectedDateFrom = null;
+                              _selectedDateTo = null;
+                              _maxPriceController.clear();
+                              _selectedMinSeats = 1;
+                              _selectedTimeFrom = null;
+                              _selectedTimeTo = null;
+                              _selectedMinRating = 0.0;
+                            });
+                          },
+                          child: const Text('Wyczyść'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            // zastosowanie filtrow
+                            _activeFilters = RouteFilters(
+                              dateFrom: _selectedDateFrom,
+                              dateTo: _selectedDateTo,
+                              maxPrice: _maxPriceController.text.isNotEmpty
+                                  ? double.tryParse(_maxPriceController.text)
+                                  : null,
+                              minSeats: _selectedMinSeats,
+                              timeFrom: _selectedTimeFrom,
+                              timeTo: _selectedTimeTo,
+                              minRating: _selectedMinRating > 0 ? _selectedMinRating : null,
+                            );
+                            Navigator.pop(context);
+                            setState(() => _showFilters = _activeFilters.hasFilters);
+                          },
+                          child: const Text('Zastosuj filtry'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             );
           },
@@ -307,8 +399,11 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
     int filterCount = 0;
     if (_activeFilters.dateFrom != null) filterCount++;
     if (_activeFilters.dateTo != null) filterCount++;
+    if (_activeFilters.timeFrom != null) filterCount++;
+    if (_activeFilters.timeTo != null) filterCount++;
     if (_activeFilters.maxPrice != null) filterCount++;
     if (_activeFilters.minSeats != null && _activeFilters.minSeats! > 1) filterCount++;
+    if (_activeFilters.minRating != null) filterCount++;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -521,6 +616,9 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
                             _selectedDateTo = null;
                             _maxPriceController.clear();
                             _selectedMinSeats = 1;
+                            _selectedTimeFrom = null;
+                            _selectedTimeTo = null;
+                            _selectedMinRating = 0.0;
                           });
                         },
                         child: const Text('Wyczyść filtry'),
@@ -559,6 +657,9 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
                             _selectedDateTo = null;
                             _maxPriceController.clear();
                             _selectedMinSeats = 1;
+                            _selectedTimeFrom = null;
+                            _selectedTimeTo = null;
+                            _selectedMinRating = 0.0;
                           });
                         },
                         child: const Text(
@@ -619,6 +720,7 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
                           children: [
                             Text('📅 ${_formatDate(route.date)}'),
                             Text('👤 Kierowca: ${route.driverName}'),
+                            Text('⭐ Ocena: ${route.driverRating.toStringAsFixed(1)}'),
                             Text('💰 Koszt: ${_formatPrice(route.totalCost)}'),
                             Text('🪑 Miejsca: ${route.availableSeats}/${route.seats}'),
                             FutureBuilder<String>(

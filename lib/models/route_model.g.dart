@@ -31,13 +31,14 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       isActive: fields[11] as bool,
       startAddress: fields[12] as String,
       endAddress: fields[13] as String,
+      driverRating: fields[14] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, RouteModel obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       ..writeByte(12)
       ..write(obj.startAddress)
       ..writeByte(13)
-      ..write(obj.endAddress);
+      ..write(obj.endAddress)
+      ..writeByte(14)
+      ..write(obj.driverRating);
   }
 
   @override
