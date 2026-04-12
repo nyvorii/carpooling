@@ -125,9 +125,11 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                       plate: plate,
                       imageFile: pickedImage,
                     );
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Pojazd dodany')),
                     );
+                    }
                   } else {
                     await VehicleService.updateVehicle(
                       vehicleId,
@@ -137,14 +139,18 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                       plate: plate,
                       imageFile: pickedImage,
                     );
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Pojazd zaktualizowany')),
                     );
+                    }
                   }
                   Navigator.pop(context);
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context)
+                  if (mounted) {
+                    ScaffoldMessenger.of(context)
                       .showSnackBar(SnackBar(content: Text('Błąd: $e')));
+                  }
                 }
               }
             },
@@ -170,8 +176,10 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 
     if (confirmed == true) {
       await VehicleService.deleteVehicle(vehicleId);
-      if (mounted) ScaffoldMessenger.of(context)
+      if (mounted) {
+        ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Pojazd usunięty')));
+      }
     }
   }
 

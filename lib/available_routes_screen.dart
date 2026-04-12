@@ -247,7 +247,7 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
 
                     // minimalna ilosc miejsc
                     DropdownButtonFormField<int>(
-                      value: _selectedMinSeats,
+                      initialValue: _selectedMinSeats,
                       decoration: const InputDecoration(
                         labelText: 'Minimalna liczba miejsc',
                         prefixIcon: Icon(Icons.people),
@@ -378,7 +378,7 @@ class _AvailableRoutesScreenState extends State<AvailableRoutesScreen> {
       return parts.first;
     }
 
-    return address.substring(0, 27) + '...';
+    return '${address.substring(0, 27)}...';
   }
 
   String _formatLocation(LatLng location) {

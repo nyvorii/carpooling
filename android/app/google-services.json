@@ -70,6 +70,14 @@
           }
         },
         {
+          "client_id": "353303140418-sr56g5nfu3j3eojmhkprb72j1ecq2t1r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "9ca30316f91dcdabb3652cce98e89d6c9a0ec07e"
+          }
+        },
+        {
           "client_id": "353303140418-sv64ghosjda1575h9ckdnn145prbglo2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
