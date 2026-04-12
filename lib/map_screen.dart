@@ -144,7 +144,7 @@ class _MapScreenState extends State<MapScreen> {
   String _shortenAddress(String address) {
     if (address.length <= 30) return address;
     final parts = address.split(',');
-    return parts.length > 1 ? '${parts[0]}, ${parts[1]}' : address.substring(0, 27) + '...';
+    return parts.length > 1 ? '${parts[0]}, ${parts[1]}' : '${address.substring(0, 27)}...';
   }
 
   void _refreshRoute(LatLng? newStart, LatLng? newEnd) {

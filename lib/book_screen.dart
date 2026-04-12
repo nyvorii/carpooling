@@ -216,7 +216,7 @@ class BookScreen extends StatelessWidget {
       return '${parts[0]}, ${parts[1]}...';
     }
 
-    return address.substring(0, 22) + '...';
+    return '${address.substring(0, 22)}...';
   }
 
   String _formatDate(DateTime date) {

@@ -7,9 +7,15 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
-class DriverBookingsScreen extends StatelessWidget {
+class DriverBookingsScreen extends StatefulWidget {
   const DriverBookingsScreen({super.key});
+
+  @override
+  State<DriverBookingsScreen> createState() => _DriverBookingsScreenState();
+}
+
+class _DriverBookingsScreenState extends State<DriverBookingsScreen> {
+  final Set<String> _selectedBookings = {};
 
   void _showContactInfo(
     BuildContext context, {
@@ -55,7 +61,6 @@ class DriverBookingsScreen extends StatelessWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
@@ -68,170 +73,228 @@ class DriverBookingsScreen extends StatelessWidget {
       ),
       body: user == null
           ? const Center(
-        child: Text(
-          'Zaloguj się, aby zobaczyć rezerwacje',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
-      )
+              child: Text(
+                'Zaloguj się, aby zobaczyć rezerwacje',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            )
           : Consumer<BookingService>(
-        builder: (context, bookingService, child) {
-          return StreamBuilder<List<BookingModel>>(
-            stream: bookingService.getDriverBookings(user.uid),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+              builder: (context, bookingService, child) {
+                return StreamBuilder<List<BookingModel>>(
+                  stream: bookingService.getDriverBookings(user.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Błąd: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
-              }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Błąd: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
 
-              final bookings = snapshot.data ?? [];
+                    final bookings = snapshot.data ?? [];
 
-              if (bookings.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'Brak rezerwacji',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Twoi pasażerowie pojawią się tutaj',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              // przychód
-              final totalRevenue = bookings.fold(0.0, (sum, booking) => sum + booking.costShare);
-
-              return Column(
-                children: [
-                  // Podsumowanie finansowe
-                  Card(
-                    margin: const EdgeInsets.all(16),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Podsumowanie finansowe',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
+                    if (bookings.isEmpty) {
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.people_outline,
+                                size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              'Brak rezerwacji',
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.grey),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Łączny przychód: ${totalRevenue.toStringAsFixed(2)} PLN',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                            SizedBox(height: 8),
+                            Text(
+                              'Twoi pasażerowie pojawią się tutaj',
+                              style:
+                                  TextStyle(fontSize: 14, color: Colors.grey),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Liczba pasażerów: ${bookings.length}',
-                            style: const TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Średnio na pasażera: ${(totalRevenue / bookings.length).toStringAsFixed(2)} PLN',
-                            style: const TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                          ],
+                        ),
+                      );
+                    }
 
-                  // Lista pasazerow
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: bookings.length,
-                      itemBuilder: (context, index) {
-                        final booking = bookings[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                          elevation: 2,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: _getStatusColor(booking.status),
-                              child: Text(
-                                booking.passengerName[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            title: Text(
-                              booking.passengerName,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    // przychód
+                    final totalRevenue = bookings.fold(
+                        0.0, (sum, booking) => sum + booking.costShare);
+
+                    return Column(
+                      children: [
+                        // Podsumowanie finansowe
+                        Card(
+                          margin: const EdgeInsets.all(16),
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
                               children: [
-                                const SizedBox(height: 4),
-                                Text('Email: ${booking.passengerEmail}'),
-                                Text('Miejsca: ${booking.seatsBooked}'),
-                                Text('Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
-                                Text('Data rezerwacji: ${_formatDate(booking.createdAt)}'),
                                 Text(
-                                  'Status: ${_getStatusText(booking.status)}',
-                                  style: TextStyle(
-                                    color: _getStatusColor(booking.status),
+                                  'Podsumowanie finansowe',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Łączny przychód: ${totalRevenue.toStringAsFixed(2)} PLN',
+                                  style: const TextStyle(
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.green,
                                   ),
                                 ),
-                              ],
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert),
-                              onSelected: (value) {
-                                if (value == 'details') {
-                                  _showPassengerDetails(context, booking);
-                                } else if (value == 'contact') {
-                                  _contactPassenger(context, booking);
-                                }
-                              },
-                              itemBuilder: (BuildContext context) => [
-                                const PopupMenuItem<String>(
-                                  value: 'details',
-                                  child: ListTile(
-                                    leading: Icon(Icons.info),
-                                    title: Text('Szczegóły'),
-                                  ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Liczba pasażerów: ${bookings.length}',
+                                  style: const TextStyle(
+                                      fontSize: 16, color: Colors.grey),
                                 ),
-                                const PopupMenuItem<String>(
-                                  value: 'contact',
-                                  child: ListTile(
-                                    leading: Icon(Icons.email),
-                                    title: Text('Kontakt'),
-                                  ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Średnio na pasażera: ${(totalRevenue / bookings.length).toStringAsFixed(2)} PLN',
+                                  style: const TextStyle(
+                                      fontSize: 14, color: Colors.grey),
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      ),
+                        ),
+
+                        // Lista pasazerow
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: bookings.length,
+                            itemBuilder: (context, index) {
+                              final booking = bookings[index];
+                              final bool isSelected = _selectedBookings.contains(booking.id);
+
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 6),
+                                elevation: isSelected ? 4 : 2,
+                                color: isSelected ? Colors.green[50] : Colors.white,
+                                child: ListTile(
+                                  onTap: () {
+                                    if (booking.status == 'confirmed') {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedBookings.remove(booking.id);
+                                        } else {
+                                          _selectedBookings.add(booking.id);
+                                        }
+                                      });
+                                    }
+                                  },
+                                  leading: CircleAvatar(
+                                    backgroundColor:
+                                        _getStatusColor(booking.status),
+                                    child: Text(
+                                      booking.passengerName[0].toUpperCase(),
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    booking.passengerName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Text('Email: ${booking.passengerEmail}'),
+                                      Text('Miejsca: ${booking.seatsBooked}'),
+                                      Text(
+                                          'Koszt: ${booking.costShare.toStringAsFixed(2)} PLN'),
+                                      Text(
+                                          'Data rezerwacji: ${_formatDate(booking.createdAt)}'),
+                                      Text(
+                                        'Status: ${_getStatusText(booking.status)}',
+                                        style: TextStyle(
+                                          color:
+                                              _getStatusColor(booking.status),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: isSelected 
+                                    ? const Icon(Icons.check_circle, color: Colors.green)
+                                    : PopupMenuButton<String>(
+                                      icon: const Icon(Icons.more_vert),
+                                      onSelected: (value) {
+                                        if (value == 'details') {
+                                          _showPassengerDetails(context, booking);
+                                        } else if (value == 'contact') {
+                                          _contactPassenger(context, booking);
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => [
+                                        const PopupMenuItem<String>(
+                                          value: 'details',
+                                          child: ListTile(
+                                            leading: Icon(Icons.info),
+                                            title: Text('Szczegóły'),
+                                          ),
+                                        ),
+                                        const PopupMenuItem<String>(
+                                          value: 'contact',
+                                          child: ListTile(
+                                            leading: Icon(Icons.email),
+                                            title: Text('Kontakt'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        if (_selectedBookings.isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.flag_circle, size: 28),
+                              label: Text(
+                                'ZAKOŃCZ TRASĘ (${_selectedBookings.length})',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: () {
+                                final selectedList = bookings.where((b) => _selectedBookings.contains(b.id)).toList();
+                                _completeSelectedRoute(context, selectedList);
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 
@@ -247,6 +310,8 @@ class DriverBookingsScreen extends StatelessWidget {
         return Colors.red;
       case 'pending':
         return Colors.orange;
+      case 'completed':
+        return Colors.teal;
       default:
         return Colors.blueAccent;
     }
@@ -260,6 +325,8 @@ class DriverBookingsScreen extends StatelessWidget {
         return 'Anulowana';
       case 'pending':
         return 'Oczekująca';
+      case 'completed':
+        return 'Zakończona';
       default:
         return status;
     }
@@ -361,28 +428,11 @@ class DriverBookingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
   void _contactPassenger(BuildContext context, BookingModel booking) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Kontakt z pasażerem'),
+        title: const Text('Kontakt z pasażerem'),
         content: FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance
               .collection('users')
@@ -408,7 +458,7 @@ class DriverBookingsScreen extends StatelessWidget {
                       Navigator.pop(context);
                       _showContactInfo(context, type: 'email');
                       // to użyć jak telefon z funkcją 
-                      // mail_sendEmail(email);
+                      // _sendEmail(email);
                     },
                   ),
 
@@ -420,7 +470,7 @@ class DriverBookingsScreen extends StatelessWidget {
                       Navigator.pop(context);
                       _showContactInfo(context, type: 'phone');
                       // to użyć jak telefon z funkcją dzwonienia 
-                      //_makePhoneCall(phone);
+                      // _makePhoneCall(phone);
                     },
                   ),
 
@@ -447,12 +497,50 @@ class DriverBookingsScreen extends StatelessWidget {
     );
   }
 
+  void _completeSelectedRoute(BuildContext context, List<BookingModel> selected) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Zakończenie trasy'),
+        content: Text('Czy na pewno chcesz zakończyć trasę dla wybranych (${selected.length})?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+            onPressed: () async {
+              Navigator.pop(context);
+              final batch = FirebaseFirestore.instance.batch();
 
-  Widget _buildContactOption(BuildContext context, String text, IconData icon, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.blueAccent),
-      title: Text(text),
-      onTap: onTap,
+              for (var booking in selected) {
+                final docRef = FirebaseFirestore.instance.collection('bookings').doc(booking.id);
+                batch.update(docRef, {'status': 'completed'});
+              }
+
+              try {
+                await batch.commit();
+                setState(() {
+                  _selectedBookings.clear();
+                });
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Trasa zakończona!'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Zakończ', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

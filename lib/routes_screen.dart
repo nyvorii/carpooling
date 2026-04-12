@@ -209,7 +209,7 @@ class AvailableRoutesScreen extends StatelessWidget {
       return parts.first;
     }
 
-    return address.substring(0, 27) + '...';
+    return '${address.substring(0, 27)}...';
   }
 
   String _formatLocation(LatLng location) {
