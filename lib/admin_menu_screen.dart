@@ -373,7 +373,21 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return ClipOval(
-        child: Image.network(photoUrl, width: size, height: size, fit: BoxFit.cover),
+        child: Image.network(
+          photoUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: size,
+              height: size,
+              color: Colors.red[900],
+              child: const Icon(Icons.admin_panel_settings,
+                  size: 60, color: Colors.white),
+            );
+          },
+        ),
       );
     }
     // Domyślna ikona admina
