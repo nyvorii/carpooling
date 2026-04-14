@@ -1,6 +1,7 @@
 import 'dart:convert'; // Do obsługi zdjęć base64
 import 'dart:io';      // Do obsługi plików zdjęć
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -31,6 +32,12 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
   void _onTabTapped(int index) {
     setState(() => _currentIndex = index);
   }
+  bool isDesktop(BuildContext context) =>
+    MediaQuery.of(context).size.width >= 900;
+
+  bool isTablet(BuildContext context) =>
+    MediaQuery.of(context).size.width >= 600 &&
+    MediaQuery.of(context).size.width < 900;
 
   @override
   Widget build(BuildContext context) {
@@ -45,30 +52,58 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
         centerTitle: true,
         backgroundColor: themeColor,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: !isDesktop(context),
       ),
-      drawer: _buildDrawer(userName, userEmail, themeColor),
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: themeColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.manage_accounts), 
-            label: 'Użytkownicy'
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment), 
-            label: 'Zgłoszenia'
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person), 
-            label: 'Profil'
-          ),
-        ],
-      ),
+
+      drawer: isDesktop(context)
+          ? null
+          : _buildDrawer(userName, userEmail, themeColor),
+
+      body: isDesktop(context)
+          ? Row(
+              children: [
+                _buildSidebar(userName, userEmail, themeColor),
+                Expanded(
+                  child: Container(
+                    color: Colors.grey[100],
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: _screens[_currentIndex],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : _screens[_currentIndex],
+
+      bottomNavigationBar: isDesktop(context)
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: _onTabTapped,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: themeColor,
+              unselectedItemColor: Colors.grey,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.manage_accounts),
+                  label: 'Użytkownicy',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.assignment),
+                  label: 'Zgłoszenia',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: 'Profil',
+                ),
+              ],
+            ),
     );
   }
 
@@ -92,6 +127,60 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSidebar(String userName, String userEmail, Color color) {
+    return Container(
+      width: 260,
+      color: color,
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: Colors.white,
+            child: Text(
+              userName.isNotEmpty ? userName[0] : "A",
+              style: TextStyle(fontSize: 28, color: color),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+          Text(userName, style: const TextStyle(color: Colors.white)),
+          Text(userEmail,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+
+          const SizedBox(height: 30),
+
+          _sidebarItem(Icons.manage_accounts, "Użytkownicy", 0),
+          _sidebarItem(Icons.assignment, "Zgłoszenia", 1),
+          _sidebarItem(Icons.person, "Profil", 2),
+
+          const Spacer(),
+
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.white),
+            title: const Text("Wyloguj",
+                style: TextStyle(color: Colors.white)),
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sidebarItem(IconData icon, String title, int index) {
+    final isSelected = _currentIndex == index;
+
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
+      tileColor: isSelected ? Colors.black26 : null,
+      onTap: () => _onTabTapped(index),
     );
   }
 }
