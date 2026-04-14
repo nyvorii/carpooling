@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,19 +21,28 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final FirebaseAuth auth = FirebaseAuth.instance;
 
-      GoogleSignInAccount? googleUser =
-          await _googleSignIn.signInSilently();
+      UserCredential userCredential;
 
-      googleUser ??= await _googleSignIn.signIn();
-      if (googleUser == null) return;
+      if (kIsWeb) {
+        userCredential =
+          await auth.signInWithPopup(GoogleAuthProvider());
+      } else {
+        GoogleSignInAccount? googleUser =
+            await _googleSignIn.signInSilently();
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+        googleUser ??= await _googleSignIn.signIn();
+        if (googleUser == null) return;
 
-      await auth.signInWithCredential(credential);
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential =
+          await auth.signInWithCredential(credential);
+      }
+
       final user = auth.currentUser;
       if (user == null) return;
 
@@ -43,11 +53,29 @@ class _HomeScreenState extends State<HomeScreen> {
           .doc(user.uid)
           .get();
 
+      final data = doc.data();
+      if (kIsWeb) {
+        if (data == null || data['role'] != 0) {
+          await auth.signOut();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Dostęp tylko dla administratora"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+      await _saveUserToFirestore(user);
+
       final isBlocked = doc.data()?['isBlocked'] ?? false;
 
       if (isBlocked) {
         await FirebaseAuth.instance.signOut();
-        await _googleSignIn.signOut();
+        if(!kIsWeb){
+          await _googleSignIn.signOut();
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
