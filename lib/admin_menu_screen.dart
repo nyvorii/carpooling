@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'admin_statistics_screen.dart';
 
 // Importy ekranów pomocniczych (upewnij się, że masz te pliki w projekcie)
 import 'edit_profile_screen.dart';
@@ -23,11 +24,12 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
   int _currentIndex = 0;
 
   // Lista ekranów
-  final List<Widget> _screens = const [
-    AdminUsersScreen(),        // Zarządzanie userami
-    AdminApplicationsScreen(), // Zgłoszenia
-    AdminProfileScreen(),      // <--- ULEPSZONY PROFIL ADMINA
-  ];
+final List<Widget> _screens = const [
+  AdminUsersScreen(),
+  AdminApplicationsScreen(),
+  AdminStatisticsScreen(), 
+  AdminProfileScreen(),
+];
 
   void _onTabTapped(int index) {
     setState(() => _currentIndex = index);
@@ -98,6 +100,10 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                   icon: Icon(Icons.assignment),
                   label: 'Zgłoszenia',
                 ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.bar_chart),
+                   label: 'Statystyki', // <-- DODAJ
+                ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person),
                   label: 'Profil',
@@ -156,7 +162,8 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
 
           _sidebarItem(Icons.manage_accounts, "Użytkownicy", 0),
           _sidebarItem(Icons.assignment, "Zgłoszenia", 1),
-          _sidebarItem(Icons.person, "Profil", 2),
+          _sidebarItem(Icons.bar_chart, "Statystyki", 2), 
+          _sidebarItem(Icons.person, "Profil", 3),
 
           const Spacer(),
 
