@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-
+import 'wallet_screen.dart';
 import 'admin_menu_screen.dart';
 import 'profile_screen.dart';
 import 'book_screen.dart';
@@ -79,7 +79,7 @@ class _MenuScreenState extends State<MenuScreen> {
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
         final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;
-        final title = showDriverInterface ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
+        final title = showDriverInterface ? 'KIEROWCA' : 'PASAŻER';
 
         return Scaffold(
           appBar: AppBar(
@@ -88,11 +88,75 @@ class _MenuScreenState extends State<MenuScreen> {
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
             actions: [
-              if (canBeDriver) 
+
+              // BALANCE
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(firebaseUser?.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+
+                  double balance = 0;
+
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data =
+                        snapshot.data!.data() as Map<String, dynamic>;
+
+                    balance = (data['balance'] ?? 0).toDouble();
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WalletScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.account_balance_wallet,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "${balance.toStringAsFixed(2)} PLN",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              if (canBeDriver)
                 Row(
                   children: [
                     Icon(
-                      _isDriverMode ? Icons.drive_eta : Icons.person, 
+                      _isDriverMode
+                          ? Icons.drive_eta
+                          : Icons.person,
                       color: Colors.white,
                       size: 20,
                     ),
