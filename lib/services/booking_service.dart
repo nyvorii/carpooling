@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import '../models/booking_model.dart';
 import '../models/route_model.dart';
 import 'wallet_service.dart';
+import '../models/review_model.dart';
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -244,4 +245,46 @@ class BookingService {
     }
   }
   
+  Future<bool> addReview(ReviewModel review) async {
+    try {
+      final existing = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('routeId', isEqualTo: review.routeId)
+          .where('reviewerId', isEqualTo: review.reviewerId)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        return false;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('reviews')
+          .add(review.toFirestore());
+
+      await _updateUserRating(review.reviewedUserId);
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _updateUserRating(String userId) async {
+    final reviews = await FirebaseFirestore.instance
+        .collection('reviews')
+        .where('reviewedUserId', isEqualTo: userId)
+        .get();
+
+    if (reviews.docs.isEmpty) return;
+
+    double avg = reviews.docs
+            .map((e) => (e['rating'] as int).toDouble())
+            .reduce((a, b) => a + b) /
+        reviews.docs.length;
+
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'rating': avg,
+      'reviewsCount': reviews.docs.length,
+    });
+  }
 }
