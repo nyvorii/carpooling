@@ -7,6 +7,7 @@ import 'models/booking_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'models/route_model.dart';
 import 'services/cached_geocoding_service.dart'; // DODAJ
+import 'models/review_model.dart';
 
 class BookScreen extends StatelessWidget {
   const BookScreen({super.key});
@@ -138,9 +139,21 @@ class BookScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.cancel, color: Colors.red),
-                            onPressed: () => _showCancelDialog(context, booking, route, bookingService),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (booking.status != 'completed')
+                                IconButton(
+                                  icon: const Icon(Icons.cancel, color: Colors.red),
+                                  onPressed: () => _showCancelDialog(context, booking, route, bookingService),
+                                ),
+
+                              if (route.date.isBefore(DateTime.now()) && booking.status == 'completed')
+                                  TextButton(
+                                    onPressed: () => _showReviewDialog(context, booking, route),
+                                    child: const Text('Oceń', style: TextStyle(fontSize: 12)),
+                                  ),
+                            ],
                           ),
                           onTap: () {
                             _showBookingDetails(context, booking, route);
@@ -321,5 +334,75 @@ class BookScreen extends StatelessWidget {
       default:
         return status;
     }
+  }
+
+  void _showReviewDialog(BuildContext context, BookingModel booking, RouteModel route) {
+    int rating = 5;
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Oceń podróż'),
+        content: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<int>(
+                value: rating,
+                items: List.generate(5, (i) => i + 1)
+                    .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text('$e ⭐'),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => rating = v!),
+              ),
+              TextField(
+                controller: controller,
+                maxLength: 300,
+                decoration: const InputDecoration(
+                  hintText: 'Dodaj komentarz...',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final comment = controller.text.trim();
+
+              final review = ReviewModel(
+                id: '',
+                routeId: route.id,
+                reviewerId: booking.passengerId,
+                reviewedUserId: route.driverId,
+                rating: rating,
+                comment: comment,
+                createdAt: DateTime.now(),
+              );
+
+              final success = await Provider.of<BookingService>(context, listen: false)
+                  .addReview(review);
+
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      success ? 'Dodano opinię' : 'Już oceniłeś tę podróż'),
+                ),
+              );
+            },
+            child: const Text('Dodaj'),
+          ),
+        ],
+      ),
+    );
   }
 }

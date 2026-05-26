@@ -11,6 +11,8 @@ import 'my_vehicles_screen.dart';
 import 'settings_screen.dart';
 import 'support_screen.dart';
 import 'home_screen.dart';
+import 'models/review_model.dart';
+import 'reviews_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -135,10 +137,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: _buildStatItem('Jako kierowca', '35'),
             ),
-            _buildStatItem('Ocena', '4.9 ★'),
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                  .get(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return _buildStatItem('Ocena', '...');
+                }
+
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+
+                final rating = (data['rating'] ?? 0).toDouble();
+                final count = data['reviewsCount'] ?? 0;
+
+                return _buildStatItem(
+                  'Ocena',
+                  '${rating.toStringAsFixed(1)} ★\n($count)',
+                );
+              },
+            ),
           ],
         ),
         const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Opinie',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        ListTile(
+          leading: const Icon(Icons.star_border),
+          title: const Text('Opinie'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReviewsScreen(
+                  userId: FirebaseAuth.instance.currentUser!.uid,
+                ),
+              ),
+            );
+          },
+        ),
         const Divider(indent: 16, endIndent: 16),
         ListTile(
           leading: const Icon(Icons.edit_outlined),

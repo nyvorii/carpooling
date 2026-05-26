@@ -4,11 +4,14 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive/hive.dart';
 import '../models/booking_model.dart';
 import '../models/route_model.dart';
+import 'wallet_service.dart';
+import '../models/review_model.dart';
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final WalletService _walletService = WalletService();
 
   Stream<List<RouteModel>> getAvailableRoutes() {
     return _firestore
@@ -20,19 +23,40 @@ class BookingService {
         snapshot.docs.map((doc) => RouteModel.fromFirestore(doc)).toList());
   }
 
-  Future<bool> bookSeat(RouteModel route, int seats, String passengerName, String passengerEmail) async {
+  Future<bool> bookSeat(
+    RouteModel route,
+    int seats,
+    String passengerName,
+    String passengerEmail,
+  ) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return false;
-      if (route.availableSeats < seats) {
-        return false;
+      if (user.uid == route.driverId) {
+         throw Exception('OWN_ROUTE_BOOKING');
       }
 
-      final costShare = route.totalCost > 0
-          ? (route.totalCost / route.seats) * seats
-          : 0.0;
+      if (route.availableSeats < seats) return false;
 
-      final bookingId = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
+      final costShare =
+          route.totalCost > 0
+              ? (route.totalCost / route.seats) * seats
+              : 0.0;
+
+      final paymentSuccess = await _walletService.payForRide(
+        passengerId: user.uid,
+        driverId: route.driverId,
+        amount: costShare,
+        routeId: route.id,
+      );
+
+      if (!paymentSuccess) {
+        throw Exception('INSUFFICIENT_FUNDS');
+      }
+
+      final bookingId =
+          '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
+
       final booking = BookingModel(
         id: bookingId,
         routeId: route.id,
@@ -45,13 +69,20 @@ class BookingService {
         updatedAt: DateTime.now(),
       );
 
-      await _firestore.collection('bookings').doc(bookingId).set(booking.toFirestore());
+      await _firestore.collection('bookings').doc(bookingId).set(
+            booking.toFirestore(),
+          );
 
       await _updateRouteAfterBooking(route, seats, user.uid);
 
       return true;
     } catch (e) {
       print('Błąd rezerwacji: $e');
+
+      if (e.toString().contains('INSUFFICIENT_FUNDS')) {
+        return false;
+      }
+
       return false;
     }
   }
@@ -102,6 +133,8 @@ class BookingService {
       final bookingData = bookingSnapshot.data()!;
       final seatsBooked = bookingData['seatsBooked'] ?? 1;
       final passengerId = bookingData['passengerId'] as String? ?? '';
+      final costShare =
+    (bookingData['costShare'] ?? 0).toDouble();
 
       await bookingDoc.update({
         'status': 'cancelled',
@@ -109,6 +142,13 @@ class BookingService {
       });
 
       await _updateRouteAfterCancellation(route, seatsBooked, passengerId);
+
+      await _walletService.refundRide(
+        passengerId: passengerId,
+        driverId: route.driverId,
+        amount: costShare,
+        routeId: route.id,
+      );
 
       return true;
     } catch (e) {
@@ -203,5 +243,48 @@ class BookingService {
     } catch (e) {
       print('Błąd inicjalizacji FCM: $e');
     }
+  }
+  
+  Future<bool> addReview(ReviewModel review) async {
+    try {
+      final existing = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('routeId', isEqualTo: review.routeId)
+          .where('reviewerId', isEqualTo: review.reviewerId)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        return false;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('reviews')
+          .add(review.toFirestore());
+
+      await _updateUserRating(review.reviewedUserId);
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _updateUserRating(String userId) async {
+    final reviews = await FirebaseFirestore.instance
+        .collection('reviews')
+        .where('reviewedUserId', isEqualTo: userId)
+        .get();
+
+    if (reviews.docs.isEmpty) return;
+
+    double avg = reviews.docs
+            .map((e) => (e['rating'] as int).toDouble())
+            .reduce((a, b) => a + b) /
+        reviews.docs.length;
+
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'rating': avg,
+      'reviewsCount': reviews.docs.length,
+    });
   }
 }

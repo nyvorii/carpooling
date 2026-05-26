@@ -122,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'isBlocked': false,
         'role': 1, // 👤 zwykły użytkownik
         'createdAt': FieldValue.serverTimestamp(),
+        'balance': 0.0,
         'lastLogin': FieldValue.serverTimestamp(),
       });
     } else {
@@ -146,6 +147,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!data.containsKey('contactPhone')) {
         await userDoc.update({
           'contactPhone': '',
+        });
+      }
+            if (!data.containsKey('balance')) {
+        await userDoc.update({
+          'balance': 0.0,
         });
       }
 

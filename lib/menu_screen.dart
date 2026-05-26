@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-
+import 'wallet_screen.dart';
 import 'admin_menu_screen.dart';
 import 'profile_screen.dart';
 import 'book_screen.dart';
 import 'map_screen.dart';
 import 'driver_bookings_screen.dart';
 import 'available_routes_screen.dart';
+import 'notifications_screen.dart';
+import 'my_routes_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -19,13 +21,13 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   int _currentIndex = 0;
-  
+
   // Domyślnie włączony tryb kierowcy (jeśli rola na to pozwala)
-  bool _isDriverMode = true; 
+  bool _isDriverMode = true;
 
   Future<int> _getUserRole() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return 1; 
+    if (user == null) return 1;
     final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     return doc.data()?['role'] ?? 1;
   }
@@ -54,12 +56,12 @@ class _MenuScreenState extends State<MenuScreen> {
 
         // === 2. KIEROWCA / PASAŻER ===
         final bool canBeDriver = (role == 2);
-        
+
         // Interfejs kierowcy pokazujemy TYLKO gdy jest rola 2 ORAZ włączony suwak
         final bool showDriverInterface = canBeDriver && _isDriverMode;
-        
+
         // --- LISTY EKRANÓW ---
-        
+
         final passengerScreens = <Widget>[
           const MapScreen(isDriverMode: false), // Mapa bez edycji
           const AvailableRoutesScreen(),        // <--- PRZYWRÓCONE SZUKANIE
@@ -79,7 +81,7 @@ class _MenuScreenState extends State<MenuScreen> {
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
         final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;
-        final title = showDriverInterface ? 'PANEL KIEROWCY' : 'PANEL PASAŻERA';
+        final title = showDriverInterface ? 'KIEROWCA' : 'PASAŻER';
 
         return Scaffold(
           appBar: AppBar(
@@ -88,11 +90,68 @@ class _MenuScreenState extends State<MenuScreen> {
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
             actions: [
-              if (canBeDriver) 
+
+              // BALANCE
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(firebaseUser?.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+
+                  double balance = 0;
+
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>;
+                    balance = (data['balance'] ?? 0).toDouble();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const WalletScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.account_balance_wallet,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "${balance.toStringAsFixed(2)} PLN",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              if (canBeDriver)
                 Row(
                   children: [
                     Icon(
-                      _isDriverMode ? Icons.drive_eta : Icons.person, 
+                      _isDriverMode ? Icons.drive_eta : Icons.person,
                       color: Colors.white,
                       size: 20,
                     ),
@@ -109,16 +168,28 @@ class _MenuScreenState extends State<MenuScreen> {
                         });
                       },
                     ),
-                    const SizedBox(width: 8),
                   ],
                 ),
+              // IKONKA POWIADOMIEŃ - POWIADOMIENIA TEŻ SĄ W ROZSUWANYM MENU PO LEWEJ STRONIE
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                tooltip: 'Powiadomienia',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
             ],
           ),
           body: currentScreens[_currentIndex],
           drawer: _buildDrawer(
-             firebaseUser?.displayName ?? 'Użytkownik', 
-             firebaseUser?.email ?? '', 
-             themeColor
+            firebaseUser?.displayName ?? 'Użytkownik',
+            firebaseUser?.email ?? '',
+            themeColor,
+            canBeDriver,
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
@@ -153,7 +224,7 @@ class _MenuScreenState extends State<MenuScreen> {
     ];
   }
 
-  Widget _buildDrawer(String userName, String userEmail, Color color) {
+  Widget _buildDrawer(String userName, String userEmail, Color color, bool isDriver) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -162,6 +233,31 @@ class _MenuScreenState extends State<MenuScreen> {
             accountName: Text(userName),
             accountEmail: Text(userEmail),
             decoration: BoxDecoration(color: color),
+          ),
+          // Moje trasy (tylko dla kierowcy)
+          if (isDriver)
+            ListTile(
+              leading: const Icon(Icons.directions_car),
+              title: const Text('Moje trasy'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyRoutesScreen()),
+                );
+              },
+            ),
+          // Powiadomienia (dla każdego)
+          ListTile(
+            leading: const Icon(Icons.notifications),
+            title: const Text('Powiadomienia'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.logout),
