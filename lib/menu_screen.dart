@@ -22,7 +22,7 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   int _currentIndex = 0;
 
-  // Domyślnie włączony tryb kierowcy (jeśli rola na to pozwala)
+  // Domyślnie włączony tryb kierowcy
   bool _isDriverMode = true;
 
   Future<int> _getUserRole() async {
@@ -57,27 +57,26 @@ class _MenuScreenState extends State<MenuScreen> {
         // === 2. KIEROWCA / PASAŻER ===
         final bool canBeDriver = (role == 2);
 
-        // Interfejs kierowcy pokazujemy TYLKO gdy jest rola 2 ORAZ włączony suwak
         final bool showDriverInterface = canBeDriver && _isDriverMode;
 
-        // --- LISTY EKRANÓW ---
+
 
         final passengerScreens = <Widget>[
-          const MapScreen(isDriverMode: false), // Mapa bez edycji
-          const AvailableRoutesScreen(),        // <--- PRZYWRÓCONE SZUKANIE
-          const BookScreen(),                   // Moje rezerwacje
-          const ProfileScreen(),                // Profil
+          const MapScreen(isDriverMode: false),
+          const AvailableRoutesScreen(),       
+          const BookScreen(),                   
+          const ProfileScreen(),                
         ];
 
         final driverScreens = <Widget>[
-          const MapScreen(isDriverMode: true),  // Mapa z edycją
-          const DriverBookingsScreen(),         // Pasażerowie (zlecenia)
-          const ProfileScreen(),                // Profil
+          const MapScreen(isDriverMode: true),  
+          const DriverBookingsScreen(),       
+          const ProfileScreen(),                
         ];
 
         final currentScreens = showDriverInterface ? driverScreens : passengerScreens;
 
-        // Zabezpieczenie indeksu przy przełączaniu (żeby nie wywaliło błędu RangeError)
+       
         if (_currentIndex >= currentScreens.length) _currentIndex = 0;
 
         final themeColor = showDriverInterface ? Colors.green[700]! : Colors.blueAccent;

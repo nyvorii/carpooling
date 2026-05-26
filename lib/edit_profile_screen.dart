@@ -58,17 +58,16 @@
 
       try {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        final base64 = doc.data()?['customPhotoUrl'];
-        _contactEmailController.text =
-            doc.data()?['contactEmail'] ?? '';
+        final data = doc.data() as Map<String, dynamic>?;
 
-        _contactPhoneController.text =
-            doc.data()?['contactPhone'] ?? '';
+        _contactEmailController.text = data?['contactEmail'] ?? '';
+        _contactPhoneController.text = data?['contactPhone'] ?? '';
 
+        final base64 = data?['customPhotoUrl'];
         if (base64 != null && base64.toString().isNotEmpty) {
           if (mounted) {
             setState(() {
-              customPhotoBase64 = base64;
+              customPhotoBase64 = base64.toString();
             });
           }
         }
@@ -98,68 +97,76 @@
     }
 
     Future<void> _saveProfile() async {
-      User? user = FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie znaleziono zalogowanego użytkownika.')),
+        );
+        return;
+      }
 
-      if (user != null) {
-        final firestore = FirebaseFirestore.instance;
+      final firestore = FirebaseFirestore.instance;
+      final String name = _nameController.text.trim();
+      final String surname = _surnameController.text.trim();
+      final String fullName = "$name $surname".trim();
+      final String contactEmail = _contactEmailController.text.trim();
+      final String contactPhone = _contactPhoneController.text.trim();
 
-        final String name = _nameController.text.trim();
-        final String surname = _surnameController.text.trim();
-        final String fullName = "$name $surname".trim();
-        final String contactEmail = _contactEmailController.text.trim();
-        final String contactPhone = _contactPhoneController.text.trim();
+      if (name.isEmpty || surname.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Imię i nazwisko nie mogą być puste.")),
+        );
+        return;
+      }
 
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
 
-        if (name.isEmpty || surname.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Imię i nazwisko nie mogą być puste.")),
-          );
-          return;
+      try {
+        String? base64Image;
+
+        final updateData = <String, dynamic>{
+          'displayName': fullName,
+          'contactEmail': contactEmail,
+          'contactPhone': contactPhone,
+        };
+
+        if (imageFile != null) {
+          base64Image = await _convertToBase64(imageFile!);
+          if (base64Image != null && base64Image.isNotEmpty) {
+            updateData['customPhotoUrl'] = base64Image;
+          }
         }
 
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
+        await firestore.collection('users').doc(user.uid).set(
+          updateData,
+          SetOptions(merge: true),
         );
 
-        try {
-          String? base64Image;
+        await user.updateDisplayName(fullName);
 
-          if (imageFile != null) {
-            base64Image = await _convertToBase64(imageFile!);
-            
-            if (base64Image != null) {
-              await firestore.collection('users').doc(user.uid).set({
-                'customPhotoUrl': base64Image,
-              }, SetOptions(merge: true));
-            }
-          }
-
-          await firestore.collection('users').doc(user.uid).set({
-            'displayName': fullName,
-            'contactEmail': contactEmail,
-            'contactPhone': contactPhone,
-          }, SetOptions(merge: true));
-
-          await user.updateDisplayName(fullName);
-
-
-          if (mounted) {
-            Navigator.pop(context); 
-            Navigator.pop(context, {
-              'image': imageFile,
-              'name': name,
-              'surname': surname,
-              'photoUrl': base64Image != null
-                  ? 'data:image/png;base64,$base64Image'
-                  : user.photoURL,
-            });
-          }
-        } catch (e) {
-          if (mounted) Navigator.pop(context);
-          print(e);
+        if (mounted) {
+          Navigator.pop(context);
+          Navigator.pop(context, {
+            'image': imageFile,
+            'name': name,
+            'surname': surname,
+            'photoUrl': base64Image != null
+                ? 'data:image/png;base64,$base64Image'
+                : user.photoURL,
+          });
         }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Błąd podczas zapisywania profilu: $e')),
+          );
+        }
+        print(e);
       }
     }
 

@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final snapshot = await userDoc.get();
 
     if (!snapshot.exists) {
-      // 🆕 NOWY USER
+    
       await userDoc.set({
         'uid': user.uid,
         'email': user.email,
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       final data = snapshot.data()!;
 
-      // 🔁 STARY USER – brak role → migracja
+      
       if (!data.containsKey('role')) {
         await userDoc.update({
           'role': 1,

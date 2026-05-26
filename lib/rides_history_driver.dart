@@ -64,9 +64,7 @@ class RidesHistoryDriverScreen extends StatelessWidget {
 
   Widget _buildGlobalSummary(List<RouteModel> routes) {
     double totalExpected = routes.fold(0, (sum, r) => sum + r.totalCost);
-    // Note: We'd need to fetch bookings to see actual collected money,
-    // but for the driver, we show the total cost of their trips.
-
+   
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.green[50],

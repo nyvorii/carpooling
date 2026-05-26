@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'geocoding_cache_model.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
 
 class GeocodingCacheAdapter extends TypeAdapter<GeocodingCache> {
   @override

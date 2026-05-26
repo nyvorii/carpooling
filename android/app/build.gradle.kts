@@ -30,21 +30,32 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("../my-release-key.jks")
-            storePassword = "mlekolaki"
-            keyAlias = "myapp"
-            keyPassword = "mlekolaki"
+        getByName("debug") {
+            // Domyślna konfiguracja debug
         }
-        // ⚠️ NIE MA debug!
+
+        val keystoreFile = file("../my-release-key.jks")
+        if (keystoreFile.exists()) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = "mlekolaki"
+                keyAlias = "myapp"
+                keyPassword = "mlekolaki"
+            }
+        }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Użyj konfiguracji release jeśli plik istnieje, w przeciwnym razie debug
+            signingConfig = if (signingConfigs.findByName("release") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         getByName("debug") {
-            // ⚠️ debug NIE MA signingConfig – użyje domyślnego debug.keystore
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

@@ -65,7 +65,7 @@ class NotificationService {
     }
   }
 
-  /// stream powiadomień dla danego użytkownika (od najnowszych)
+  /// stream powiadomień dla danego użytkownika, posortowanych od najnowszych
   Stream<List<NotificationModel>> getUserNotifications(String userId) {
     return _firestore
         .collection('notifications')

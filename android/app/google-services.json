@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "353303140418-0envkkvtkcne0lqn7fvqejf42ii5m7jp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "cd38542adeeeccee92a4642e6df8dd0aa8803bab"
+          }
+        },
+        {
           "client_id": "353303140418-8i4jm1nga1aslsum4sd9hd2jmc8ks62p.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

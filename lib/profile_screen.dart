@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String userSurname = "";
   String? photoUrl;
   String? customPhotoUrl;
+  bool _showApplyDriver = false;
 
   @override
   void initState() {
@@ -40,11 +41,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final String? fullName = doc.data()?['displayName'];
 
+      final int role = (doc.data()?['role'] ?? 1) as int;
       setState(() {
         userName = fullName?.split(' ').first ?? '';
         userSurname = fullName?.split(' ').skip(1).join(' ') ?? '';
         photoUrl = user.photoURL;
         customPhotoUrl = doc.data()?['customPhotoUrl'];
+        _showApplyDriver = role == 1;
       });
     }
   }
@@ -217,17 +220,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             );
           },
         ),
-        ListTile(
-          leading: const Icon(Icons.directions_car_outlined),
-          title: const Text('Aplikuj na Kierowcę'),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DriverFormScreen()),
-            );
-          }
-        ),
+        if (_showApplyDriver)
+          ListTile(
+            leading: const Icon(Icons.directions_car_outlined),
+            title: const Text('Aplikuj na Kierowcę'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DriverFormScreen()),
+              );
+            },
+          ),
         ListTile(
           leading: const Icon(Icons.settings_outlined),
           title: const Text('Ustawienia'),

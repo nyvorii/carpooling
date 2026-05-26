@@ -100,7 +100,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
           const SizedBox(height: 10),
 
-          // 📜 TRANSAKCJE
+       
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _getTransactionsStream(),

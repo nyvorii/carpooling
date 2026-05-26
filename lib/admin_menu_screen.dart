@@ -7,10 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_statistics_screen.dart';
 
-// Importy ekranów pomocniczych (upewnij się, że masz te pliki w projekcie)
+// Importy ekranów pomocniczych
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
-import 'home_screen.dart'; // Potrzebne do przekierowania po wylogowaniu
+import 'home_screen.dart'; 
 import 'admin_applications_screen.dart';
 
 class AdminMenuScreen extends StatefulWidget {
@@ -446,7 +446,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
   }
 
-  // Funkcja budująca awatar (taka sama jak w głównym profilu)
+  // Funkcja budująca awatar
   Widget buildProfilePhoto({
     File? imageFile,
     String? customBase64,

@@ -21,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
     try {
       // WYMUSZENIE LOGOWANIA GOOGLE
       final googleSignIn = GoogleSignIn();
-      await googleSignIn.signOut(); // ⬅️ KLUCZOWE
+      await googleSignIn.signOut(); 
       final googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
@@ -37,7 +37,6 @@ class SettingsScreen extends StatelessWidget {
 
       await user.reauthenticateWithCredential(credential);
 
-      // USUWANIE DANYCH FIRESTORE
 
       // Trasy kierowcy
       final routes = await firestore
@@ -70,13 +69,13 @@ class SettingsScreen extends StatelessWidget {
         await booking.reference.delete();
       }
 
-      // Dokument user
+    
       await firestore.collection('users').doc(uid).delete();
 
-      // USUNIĘCIE KONTA AUTH
+    
       await user.delete();
 
-      // WYLOGOWANIE + PRZEJŚCIE NA LOGIN
+    
       await auth.signOut();
 
       if (context.mounted) {

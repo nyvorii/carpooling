@@ -10,7 +10,6 @@ class WalletService {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
-  /// 🔴 BLOKADA + PODZIAŁ KASY PRZY REZERWACJI
   Future<bool> payForRide({
     required String passengerId,
     required String driverId,
@@ -34,17 +33,17 @@ class WalletService {
         final driverBalance =
             _toDouble(driverDoc.data()?['balance']);
 
-        // ❌ brak środków
+        //  brak środków
         if (passengerBalance < amount) {
           return false;
         }
 
-        // 🔻 odejmij pasażerowi (ZAREZERWOWANIE)
+        //  odejmij pasażerowi 
         transaction.update(passengerRef, {
           'balance': passengerBalance - amount,
         });
 
-        // 🔺 dodaj kierowcy OD RAZU (model escrow uproszczony)
+        //  dodaj kierowcy OD RAZU (model escrow uproszczony)
         transaction.update(driverRef, {
           'balance': driverBalance + amount,
         });
@@ -79,7 +78,7 @@ class WalletService {
     }
   }
 
-  /// 🔴 ZWROT (ANULOWANIE)
+  ///  ZWROT (ANULOWANIE)
   Future<void> refundRide({
     required String passengerId,
     required String driverId,

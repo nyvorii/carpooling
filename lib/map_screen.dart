@@ -242,11 +242,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
 
-    // Wcześniej używałeś isPassenger z getUserRole, teraz używamy widget.isDriverMode
-    // aby decydować o interfejsie.
-    // Jeśli isDriverMode == false -> traktujemy użytkownika jak pasażera w kontekście mapy.
-    
-    // Sprawdzamy, czy użytkownik może wchodzić w interakcję z mapą (dodawanie punktów)
+
     final bool canInteract = widget.isDriverMode; 
 
     return Scaffold(
@@ -260,10 +256,10 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: const LatLng(52.2297, 21.0122),
-              initialZoom: 6,
+              initialCenter: const LatLng(53.1325, 23.1688),
+              initialZoom: 12,
               onTap: (tapPosition, point) {
-                // BLOKADA: Jeśli nie jest w trybie kierowcy, nie może stawiać punktów
+                
                 if (!canInteract || _isLoadingRoute) return;
 
                 setState(() {
@@ -323,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
               child: CircularProgressIndicator(),
             ),
             
-          // Panel wyboru trasy widoczny TYLKO w trybie kierowcy
+        
           if (canInteract)
             Positioned(
               top: 16,
@@ -377,8 +373,7 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
       
-      //  PRZYCISKI AKCJI (Wyczyść / Dodaj trasę)
-      // Widoczne TYLKO jeśli widget.isDriverMode == true
+      
       floatingActionButton: canInteract 
           ? Column(
               mainAxisAlignment: MainAxisAlignment.end,
