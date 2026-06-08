@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:carpooling/services/auth_service.dart';
+import 'package:carpooling/services/user_service.dart';
 import 'menu_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final AuthService authService;
+  final UserService userService;
+
+  HomeScreen({super.key, AuthService? authService, UserService? userService})
+      : authService = authService ?? GoogleAuthService(),
+        userService = userService ?? FirebaseUserService();
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -14,50 +18,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
-  final GoogleSignIn _googleSignIn =
-      GoogleSignIn(scopes: ['email', 'profile']);
 
   Future<void> _loginWithGoogle() async {
     try {
-      final FirebaseAuth auth = FirebaseAuth.instance;
-
-      UserCredential userCredential;
-
-      if (kIsWeb) {
-        userCredential =
-          await auth.signInWithPopup(GoogleAuthProvider());
-      } else {
-        GoogleSignInAccount? googleUser =
-            await _googleSignIn.signInSilently();
-
-        googleUser ??= await _googleSignIn.signIn();
-        if (googleUser == null) return;
-
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        userCredential =
-          await auth.signInWithCredential(credential);
-      }
-
-      final user = auth.currentUser;
+      final user = await widget.authService.signInWithGoogle();
       if (user == null) return;
 
-      await _saveUserToFirestore(user);
+      await widget.userService.saveUserToFirestore(user);
 
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      final data = doc.data();
+      final data = await widget.userService.getUserDoc(user.uid);
       if (kIsWeb) {
         if (data == null || data['role'] != 0) {
-          await auth.signOut();
+          await widget.authService.signOutGoogle();
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Dostęp tylko dla administratora"),
@@ -67,15 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
           return;
         }
       }
-      await _saveUserToFirestore(user);
 
-      final isBlocked = doc.data()?['isBlocked'] ?? false;
+      final isBlocked = data?['isBlocked'] ?? false;
 
       if (isBlocked) {
-        await FirebaseAuth.instance.signOut();
-        if(!kIsWeb){
-          await _googleSignIn.signOut();
-        }
+        await widget.authService.signOutGoogle();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -103,65 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 🔐 ZAPIS + MIGRACJA ROLI
-  Future<void> _saveUserToFirestore(User user) async {
-    final userDoc =
-        FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    final snapshot = await userDoc.get();
-
-    if (!snapshot.exists) {
-    
-      await userDoc.set({
-        'uid': user.uid,
-        'email': user.email,
-        'contactEmail': user.email,
-        'contactPhone': '',
-        'displayName': user.displayName,
-        'photoURL': user.photoURL,
-        'isBlocked': false,
-        'role': 1, // 👤 zwykły użytkownik
-        'createdAt': FieldValue.serverTimestamp(),
-        'balance': 0.0,
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
-    } else {
-      final data = snapshot.data()!;
-
-      
-      if (!data.containsKey('role')) {
-        await userDoc.update({
-          'role': 1,
-        });
-      }
-      if (!data.containsKey('contactEmail')) {
-        await userDoc.update({
-          'contactEmail': data['email'],
-        });
-      }
-      if (!data.containsKey('isBlocked')) {
-        await userDoc.update({
-          'isBlocked': false,
-        });
-      }
-      if (!data.containsKey('contactPhone')) {
-        await userDoc.update({
-          'contactPhone': '',
-        });
-      }
-            if (!data.containsKey('balance')) {
-        await userDoc.update({
-          'balance': 0.0,
-        });
-      }
-
-
-      // aktualizacja logowania
-      await userDoc.update({
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
-    }
-  }
+  // Zapis i migracja roli przeniesione do UserService.
 
   void _startLoginFlow() {
     if (_isLoading) return;

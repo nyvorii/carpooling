@@ -1,0 +1,44 @@
+﻿{"protocolVersion":"0.1.1","runnerVersion":null,"pid":13192,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"C:/Users/melss/carpooling/integration_test/login_integration_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading C:/Users/melss/carpooling/integration_test/login_integration_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1}
+{"count":1,"time":4,"type":"allSuites"}
+flutter : WARNING: Your Android app project: app located at: C:\Users\melss\car
+pooling\android\app\build.gradle.kts
+At line:1 char:1
++ flutter test --machine integration_test/login_integration_test.dart 2 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: Your A...uild.gradle.kts 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+applies the Kotlin Gradle Plugin, which will cause build failures in future ver
+sions of Flutter. 
+Please migrate your app to Built-in Kotlin using this guide: https://docs.flutt
+er.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers
+
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (K
+GP): image_picker_android, url_launcher_android
+Future versions of Flutter will fail to build if your app uses plugins that app
+ly KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supp
+orts Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here i
+s a guide on filing 
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/mi
+grate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-p
+lugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using
+ this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built
+-in-kotlin/for-plugin-authors
+ÔłÜ Built build\app\outputs\flutter-apk\app-debug.apk
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":"http://127.0.0.1:51262/hmI0qFPky_M=/"}}]
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":17287}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":null,"column":null,"url":null},"type":"group","time":17289}
+{"test":{"id":3,"name":"Login integration registers user and blocks a blocked account","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart"},"type":"testStart","time":17289}
+{"testID":3,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":18797}
+{"test":{"id":4,"name":"(tearDownAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":50,"column":5,"url":"package:integration_test/integration_test.dart"},"type":"testStart","time":18798}
+{"testID":4,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":18805}
+{"success":true,"type":"done","time":18991}
