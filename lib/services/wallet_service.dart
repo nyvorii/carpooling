@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WalletService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore firestore;
+
+  WalletService({FirebaseFirestore? firestore})
+      : firestore = firestore ?? FirebaseFirestore.instance;
+
 
   double _toDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -17,12 +21,12 @@ class WalletService {
     required String routeId,
   }) async {
     try {
-      return await _firestore.runTransaction((transaction) async {
+      return await firestore.runTransaction((transaction) async {
         final passengerRef =
-            _firestore.collection('users').doc(passengerId);
+            firestore.collection('users').doc(passengerId);
 
         final driverRef =
-            _firestore.collection('users').doc(driverId);
+            firestore.collection('users').doc(driverId);
 
         final passengerDoc = await transaction.get(passengerRef);
         final driverDoc = await transaction.get(driverRef);
@@ -49,7 +53,7 @@ class WalletService {
         });
 
         final tx1 =
-            _firestore.collection('transactions').doc();
+            firestore.collection('transactions').doc();
 
         transaction.set(tx1, {
           'userId': passengerId,
@@ -60,7 +64,7 @@ class WalletService {
         });
 
         final tx2 =
-            _firestore.collection('transactions').doc();
+            firestore.collection('transactions').doc();
 
         transaction.set(tx2, {
           'userId': driverId,
@@ -85,12 +89,12 @@ class WalletService {
     required double amount,
     required String routeId,
   }) async {
-    await _firestore.runTransaction((transaction) async {
+    await firestore.runTransaction((transaction) async {
       final passengerRef =
-          _firestore.collection('users').doc(passengerId);
+          firestore.collection('users').doc(passengerId);
 
       final driverRef =
-          _firestore.collection('users').doc(driverId);
+          firestore.collection('users').doc(driverId);
 
       final passengerDoc = await transaction.get(passengerRef);
       final driverDoc = await transaction.get(driverRef);
@@ -110,7 +114,7 @@ class WalletService {
       });
 
       final tx1 =
-          _firestore.collection('transactions').doc();
+          firestore.collection('transactions').doc();
 
       transaction.set(tx1, {
         'userId': passengerId,
@@ -121,7 +125,7 @@ class WalletService {
       });
 
       final tx2 =
-          _firestore.collection('transactions').doc();
+          firestore.collection('transactions').doc();
 
       transaction.set(tx2, {
         'userId': driverId,
