@@ -55,6 +55,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   hive_generator: ^2.0.0
   build_runner: ^2.3.3
   fake_cloud_firestore: ^2.5.2

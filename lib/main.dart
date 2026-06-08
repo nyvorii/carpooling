@@ -115,7 +115,7 @@ class AuthWrapper extends StatelessWidget {
     final user = Provider.of<User?>(context);
 
     if (user == null) {
-      return const HomeScreen();
+      return HomeScreen();
     } else {
       return const MenuScreen();
     }

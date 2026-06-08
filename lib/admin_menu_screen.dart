@@ -580,7 +580,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             if (context.mounted) {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                MaterialPageRoute(builder: (_) => HomeScreen()),
                 (route) => false,
               );
             }

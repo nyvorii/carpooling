@@ -262,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             await FirebaseAuth.instance.signOut();
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => HomeScreen()),
               (route) => false,
             );
           },

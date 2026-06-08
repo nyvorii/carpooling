@@ -80,7 +80,7 @@ class SettingsScreen extends StatelessWidget {
 
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => HomeScreen()),
           (_) => false,
         );
 
