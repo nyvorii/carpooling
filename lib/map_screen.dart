@@ -10,6 +10,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/route_model.dart';
 import 'package:geocoding/geocoding.dart';
 import '../services/cached_geocoding_service.dart';
+import '../services/route_service.dart';
 
 class MapScreen extends StatefulWidget {
   // Dodany parametr isDriverMode
@@ -158,46 +159,6 @@ class _MapScreenState extends State<MapScreen> {
     _updateAddresses();
   }
 
-  List<Polyline> _buildSavedPolylines() {
-    try {
-      final box = Hive.box<RouteModel>('routes');
-      return box.values
-          .where((route) => route.routePoints.isNotEmpty && route.isActive)
-          .map((route) => Polyline(
-                points: route.routePoints,
-                color: Colors.blue.withAlpha(128),
-                strokeWidth: 3,
-              ))
-          .toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  List<Marker> _buildSavedMarkers() {
-    try {
-      final box = Hive.box<RouteModel>('routes');
-      List<Marker> markers = [];
-      for (var route in box.values.where((r) => r.isActive)) {
-        markers.add(Marker(
-          point: route.start,
-          width: 40,
-          height: 40,
-          child: const Icon(Icons.location_on, color: Colors.green, size: 30),
-        ));
-        markers.add(Marker(
-          point: route.end,
-          width: 40,
-          height: 40,
-          child: const Icon(Icons.flag, color: Colors.red, size: 30),
-        ));
-      }
-      return markers;
-    } catch (e) {
-      return [];
-    }
-  }
-
   Future<void> _saveRouteToFirestore(Map<String, dynamic> routeData, User user) async {
     try {
       final firestore = FirebaseFirestore.instance;
@@ -282,35 +243,80 @@ class _MapScreenState extends State<MapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.carpooling',
               ),
-              PolylineLayer(
-                polylines: [
-                  if (_routePoints.isNotEmpty)
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 4,
-                      color: Colors.blue,
-                    ),
-                  ..._buildSavedPolylines(),
-                ],
+              StreamBuilder<List<RouteModel>>(
+                stream: user != null
+                    ? RouteService(FirebaseFirestore.instance)
+                        .getDriverRoutes(user.uid)
+                    : const Stream.empty(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+
+                  final routes = snapshot.data!;
+
+                  return PolylineLayer(
+                    polylines: routes.map((route) {
+                      return Polyline(
+                        points: route.routePoints,
+                        color: Colors.blue,
+                        strokeWidth: 4,
+                      );
+                    }).toList(),
+                  );
+                },
               ),
-              MarkerLayer(
-                markers: [
-                  if (_start != null)
-                    Marker(
-                      point: _start!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.location_on, color: Colors.green, size: 30),
-                    ),
-                  if (_end != null)
-                    Marker(
-                      point: _end!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.flag, color: Colors.red, size: 30),
-                    ),
-                  ..._buildSavedMarkers(),
-                ],
+              StreamBuilder<List<RouteModel>>(
+                stream: () {
+                  final user = Provider.of<User?>(context, listen: false);
+                  final service = RouteService(FirebaseFirestore.instance);
+
+                  if (widget.isDriverMode && user != null) {
+                    return service.getDriverRoutes(user.uid);
+                  } else {
+                    return service.getRoutes();
+                  }
+                }(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+
+                  final routes = snapshot.data!;
+
+                  return MarkerLayer(
+                    markers: [
+                      if (_start != null)
+                        Marker(
+                          point: _start!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.location_on,color: Colors.green,size: 30,),),
+                      if (_end != null)
+                        Marker(
+                          point: _end!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.flag,color: Colors.red,size: 30,),
+                        ),
+                      ...routes.expand((route) => [
+                            // START trasy
+                            Marker(
+                              point: route.start,
+                              width: 35,
+                              height: 35,
+                              child: Tooltip(message: route.startAddress,child: const Icon(Icons.location_on,color: Colors.blue,size: 25,),
+                              ),
+                            ),
+                            Marker(
+                              point: route.end,
+                              width: 35,
+                              height: 35,
+                              child: Tooltip(
+                                message: route.endAddress,
+                                child: const Icon(Icons.flag,color: Colors.orange,size: 25,),
+                              ),
+                            ),
+                          ]),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -394,6 +400,7 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 const SizedBox(height: 10),
                 FloatingActionButton.extended(
+                  key: const Key('addRouteBtn'),
                   onPressed: () async {
                     if (user == null) {
                       _showSnackBar('Musisz być zalogowany');
@@ -417,7 +424,28 @@ class _MapScreenState extends State<MapScreen> {
                       );
 
                       if (routeData != null) {
-                        await _saveRouteToFirestore(routeData, user);
+                        final routeId = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
+
+                        final route = RouteModel(
+                          id: routeId,
+                          start: _start!,
+                          end: _end!,
+                          date: routeData['date'],
+                          seats: routeData['seats'],
+                          routePoints: _routePoints,
+                          bookedSeats: 0,
+                          driverId: user.uid,
+                          driverName: user.displayName ?? 'Kierowca',
+                          totalCost: routeData['cost'],
+                          passengerIds: [],
+                          isActive: true,
+                          startAddress: routeData['startAddress'] ?? '',
+                          endAddress: routeData['endAddress'] ?? '',
+                          driverRating: 0.0,
+                        );
+
+                        final service = RouteService(FirebaseFirestore.instance);
+                        await service.saveRoute(route);
                       }
                     } else {
                       _showSnackBar('Wybierz punkt startu i końca!');

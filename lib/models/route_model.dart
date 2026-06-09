@@ -120,4 +120,38 @@ class RouteModel {
       driverRating: (data['driverRating'] ?? 0.0).toDouble(),
     );
   }
+
+  factory RouteModel.fromMap(Map<String, dynamic> data, String id) {
+    final startData = data['start'] as Map<String, dynamic>? ?? {};
+    final endData = data['end'] as Map<String, dynamic>? ?? {};
+
+    return RouteModel(
+      id: id,
+      start: LatLng(
+        (startData['lat'] ?? 0.0).toDouble(),
+        (startData['lng'] ?? 0.0).toDouble(),
+      ),
+      end: LatLng(
+        (endData['lat'] ?? 0.0).toDouble(),
+        (endData['lng'] ?? 0.0).toDouble(),
+      ),
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      seats: data['seats'] ?? 4,
+      routePoints: (data['routePoints'] as List? ?? [])
+          .map((point) => LatLng(
+                (point['lat'] ?? 0.0).toDouble(),
+                (point['lng'] ?? 0.0).toDouble(),
+              ))
+          .toList(),
+      bookedSeats: data['bookedSeats'] ?? 0,
+      driverId: data['driverId'] ?? '',
+      driverName: data['driverName'] ?? 'Kierowca',
+      totalCost: (data['totalCost'] ?? 0.0).toDouble(),
+      passengerIds: List<String>.from(data['passengerIds'] ?? []),
+      isActive: data['isActive'] ?? true,
+      startAddress: data['startAddress'] ?? '',
+      endAddress: data['endAddress'] ?? '',
+      driverRating: (data['driverRating'] ?? 0.0).toDouble(),
+    );
+  }
 }
