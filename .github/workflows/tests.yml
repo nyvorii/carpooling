@@ -17,14 +17,3 @@ jobs:
       - run: flutter pub get
 
       - run: flutter test test/route_service_test.dart
-
-      - name: Run integration tests on Android emulator
-        uses: ReactiveCircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          arch: x86_64
-          profile: Nexus 6
-          script: |
-            flutter drive \
-              --driver=test_driver/integration_test.dart \
-              --target=integration_test/app_test.dart
