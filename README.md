@@ -1,6 +1,6 @@
 # carpooling
 
-vyr33lz - Milosz Urbanowicz
+nyvorii - Milosz Urbanowicz
 ItsSkreezool - Grzegorz Zahor
 WizzCracker - Karol Rytwinski
 Devril - Pawel Wiszowaty
