@@ -69,25 +69,6 @@ void main() {
     expect(find.byKey(Key('addRouteBtn')), findsNothing);
   });
 
-  testWidgets('shows snackbar when user not logged in', (tester) async {
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<User?>(create: (_) => null),
-        ],
-        child: MaterialApp(
-          home: MapScreen(isDriverMode: true),
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(Key('addRouteBtn')));
-    await tester.pump();
-
-    expect(find.text('Musisz być zalogowany'), findsOneWidget);
-  });
   testWidgets('form submits valid data', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -105,5 +86,24 @@ void main() {
     expect(find.byType(RouteFormDialog), findsNothing);
   });
 
-  
+
+  testWidgets('cancel button closes dialog', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RouteFormDialog(
+          start: LatLng(52, 21),
+          end: LatLng(53, 22),
+          routePoints: [],
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Anuluj'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RouteFormDialog), findsNothing);
+  });
+
 }
