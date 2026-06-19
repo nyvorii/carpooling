@@ -24,7 +24,6 @@ class RidesHistoryDriverScreen extends StatelessWidget {
               stream: FirebaseFirestore.instance
                   .collection('routes')
                   .where('driverId', isEqualTo: user.uid)
-                  .orderBy('date', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -36,6 +35,9 @@ class RidesHistoryDriverScreen extends StatelessWidget {
                 }
 
                 final routes = snapshot.data?.docs.map((doc) => RouteModel.fromFirestore(doc)).toList() ?? [];
+                
+                // Sortowanie w pamięci (zamiast w zapytaniu Firestore)
+                routes.sort((a, b) => b.date.compareTo(a.date));
 
                 if (routes.isEmpty) {
                   return const Center(
