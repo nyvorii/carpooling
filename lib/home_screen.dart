@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:carpooling/services/auth_service.dart';
+import 'package:carpooling/services/user_service.dart';
 import 'menu_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final AuthService authService;
+  final UserService userService;
+
+  HomeScreen({super.key, AuthService? authService, UserService? userService})
+      : authService = authService ?? GoogleAuthService(),
+        userService = userService ?? FirebaseUserService();
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -13,34 +18,46 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
-  // Funkcja logowania
   Future<void> _loginWithGoogle() async {
     try {
-      final FirebaseAuth auth = FirebaseAuth.instance;
-
-      // 1️ Próba szybkiego logowania z cache
-      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
-
-      // 2️ Jeśli brak konta w cache — otwórz UI wyboru konta
-      googleUser ??= await _googleSignIn.signIn();
-      if (googleUser == null) return; // użytkownik anulował
-
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await auth.signInWithCredential(credential);
-      final user = auth.currentUser;
+      final user = await widget.authService.signInWithGoogle();
       if (user == null) return;
 
-      // 3️ Zapis do Firestore w tle (minimalny)
-      _saveUserToFirestore(user);
+      await widget.userService.saveUserToFirestore(user);
 
-      // 4️ Przejście do MenuScreen od razu
+      final data = await widget.userService.getUserDoc(user.uid);
+      if (kIsWeb) {
+        if (data == null || data['role'] != 0) {
+          await widget.authService.signOutGoogle();
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Dostęp tylko dla administratora"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      final isBlocked = data?['isBlocked'] ?? false;
+
+      if (isBlocked) {
+        await widget.authService.signOutGoogle();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Twoje konto zostało zablokowane przez administratora."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -49,31 +66,20 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Błąd logowania: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Błąd logowania: $e")),
+        );
       }
     }
   }
 
-  // Zapis profilu do Firestore w tle
-  Future<void> _saveUserToFirestore(User user) async {
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    await userDoc.set({
-      'uid': user.uid,
-      'email': user.email,
-      'displayName': user.displayName,
-      'photoURL': user.photoURL,
-      'lastLogin': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
+  // Zapis i migracja roli przeniesione do UserService.
 
   void _startLoginFlow() {
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
-    // Mikrotask → UI od razu pokaże loader
     Future.microtask(() async {
       await _loginWithGoogle();
       if (mounted) setState(() => _isLoading = false);
@@ -95,7 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.directions_car, color: Colors.white, size: 120),
+            const Icon(Icons.directions_car,
+                color: Colors.white, size: 120),
             const SizedBox(height: 20),
             const Text(
               'Carpooling App',
@@ -106,7 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 40),
-
             _isLoading
                 ? const CircularProgressIndicator(color: Colors.white)
                 : ElevatedButton.icon(
@@ -114,7 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),

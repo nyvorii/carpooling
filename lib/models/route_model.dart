@@ -42,6 +42,15 @@ class RouteModel {
   @HiveField(11)
   bool isActive;
 
+  @HiveField(12)
+  String startAddress;
+
+  @HiveField(13)
+  String endAddress;
+
+  @HiveField(14)
+  double driverRating;
+
   RouteModel({
     this.id = '',
     LatLng? start,
@@ -55,6 +64,9 @@ class RouteModel {
     this.totalCost = 0.0,
     this.passengerIds = const [],
     this.isActive = true,
+    this.startAddress = '',
+    this.endAddress = '',
+    this.driverRating = 0.0,
   })  : start = start ?? const LatLng(0, 0),
         end = end ?? const LatLng(0, 0),
         date = date ?? DateTime.now();
@@ -74,10 +86,13 @@ class RouteModel {
       'totalCost': totalCost,
       'passengerIds': passengerIds,
       'isActive': isActive,
+      'startAddress': startAddress,
+      'endAddress': endAddress,
       'routePoints': routePoints.map((point) =>
       {'lat': point.latitude, 'lng': point.longitude}).toList(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      'driverRating': driverRating,
     };
   }
 
@@ -100,6 +115,43 @@ class RouteModel {
       totalCost: (data['totalCost'] ?? 0.0).toDouble(),
       passengerIds: List<String>.from(data['passengerIds'] ?? []),
       isActive: data['isActive'] ?? true,
+      startAddress: data['startAddress'] ?? '',
+      endAddress: data['endAddress'] ?? '',
+      driverRating: (data['driverRating'] ?? 0.0).toDouble(),
+    );
+  }
+
+  factory RouteModel.fromMap(Map<String, dynamic> data, String id) {
+    final startData = data['start'] as Map<String, dynamic>? ?? {};
+    final endData = data['end'] as Map<String, dynamic>? ?? {};
+
+    return RouteModel(
+      id: id,
+      start: LatLng(
+        (startData['lat'] ?? 0.0).toDouble(),
+        (startData['lng'] ?? 0.0).toDouble(),
+      ),
+      end: LatLng(
+        (endData['lat'] ?? 0.0).toDouble(),
+        (endData['lng'] ?? 0.0).toDouble(),
+      ),
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      seats: data['seats'] ?? 4,
+      routePoints: (data['routePoints'] as List? ?? [])
+          .map((point) => LatLng(
+                (point['lat'] ?? 0.0).toDouble(),
+                (point['lng'] ?? 0.0).toDouble(),
+              ))
+          .toList(),
+      bookedSeats: data['bookedSeats'] ?? 0,
+      driverId: data['driverId'] ?? '',
+      driverName: data['driverName'] ?? 'Kierowca',
+      totalCost: (data['totalCost'] ?? 0.0).toDouble(),
+      passengerIds: List<String>.from(data['passengerIds'] ?? []),
+      isActive: data['isActive'] ?? true,
+      startAddress: data['startAddress'] ?? '',
+      endAddress: data['endAddress'] ?? '',
+      driverRating: (data['driverRating'] ?? 0.0).toDouble(),
     );
   }
 }

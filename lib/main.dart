@@ -4,40 +4,46 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
-// POPRAWIONE: Importy bez folderu screens/
-
 import 'menu_screen.dart';
 import 'home_screen.dart';
-
 import 'models/route_model.dart';
 import 'models/latlng_adapter.dart';
 import 'models/booking_model.dart';
+import 'models/geocoding_cache_model.dart';
 import 'services/booking_service.dart';
+import 'providers/user_mode_provider.dart';
 import 'firebase_options.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform,
+);
 
-  // inicjalizowanie Hive
   await Hive.initFlutter();
 
   Hive.registerAdapter(LatLngAdapter());
   Hive.registerAdapter(RouteModelAdapter());
   Hive.registerAdapter(BookingModelAdapter());
+  Hive.registerAdapter(GeocodingCacheAdapter());
 
-  // box na bledy
   try {
     await Hive.openBox<RouteModel>('routes');
     await Hive.openBox<BookingModel>('bookings');
+    await Hive.openBox<GeocodingCache>('geocoding_cache');
+
+    final cacheBox = Hive.box<GeocodingCache>('geocoding_cache');
+    print('[MAIN] Geocoding cache box otwarta, rozmiar: ${cacheBox.length}');
   } catch (e) {
+    print('[MAIN] Błąd otwierania Hive boxes: $e');
     await Hive.deleteBoxFromDisk('routes');
     await Hive.deleteBoxFromDisk('bookings');
+    await Hive.deleteBoxFromDisk('geocoding_cache');
     await Hive.openBox<RouteModel>('routes');
     await Hive.openBox<BookingModel>('bookings');
+    await Hive.openBox<GeocodingCache>('geocoding_cache');
   }
 
   runApp(
@@ -49,6 +55,9 @@ void main() async {
         ),
         Provider<BookingService>(
           create: (_) => BookingService(),
+        ),
+        ChangeNotifierProvider<UserModeProvider>(
+          create: (_) => UserModeProvider(),
         ),
       ],
       child: const MyApp(),
@@ -106,7 +115,7 @@ class AuthWrapper extends StatelessWidget {
     final user = Provider.of<User?>(context);
 
     if (user == null) {
-      return const HomeScreen();
+      return HomeScreen();
     } else {
       return const MenuScreen();
     }

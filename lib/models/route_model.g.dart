@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'route_model.dart';
-
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
 
 class RouteModelAdapter extends TypeAdapter<RouteModel> {
   @override
@@ -29,13 +23,16 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       totalCost: fields[9] as double,
       passengerIds: (fields[10] as List).cast<String>(),
       isActive: fields[11] as bool,
+      startAddress: fields[12] as String,
+      endAddress: fields[13] as String,
+      driverRating: fields[14] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, RouteModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +56,13 @@ class RouteModelAdapter extends TypeAdapter<RouteModel> {
       ..writeByte(10)
       ..write(obj.passengerIds)
       ..writeByte(11)
-      ..write(obj.isActive);
+      ..write(obj.isActive)
+      ..writeByte(12)
+      ..write(obj.startAddress)
+      ..writeByte(13)
+      ..write(obj.endAddress)
+      ..writeByte(14)
+      ..write(obj.driverRating);
   }
 
   @override

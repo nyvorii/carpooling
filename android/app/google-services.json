@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "353303140418",
+    "project_id": "carpooling-cd075",
+    "storage_bucket": "carpooling-cd075.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353303140418:android:b95ee42236bc199b66f5db",
+        "android_client_info": {
+          "package_name": "com.example.carpooling"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "353303140418-0envkkvtkcne0lqn7fvqejf42ii5m7jp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "cd38542adeeeccee92a4642e6df8dd0aa8803bab"
+          }
+        },
+        {
+          "client_id": "353303140418-8i4jm1nga1aslsum4sd9hd2jmc8ks62p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "10d7c6baf51f406929bf6ae14d87ec70103f19c2"
+          }
+        },
+        {
+          "client_id": "353303140418-ofbnqplumvk90lnkn0m7c45r9j3ilttl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.carpooling",
+            "certificate_hash": "ff73b289fa829d5321824989c726c08a395ac77e"
+          }
+        },
+        {
+          "client_id": "353303140418-uv02nl5vm20rt8a8g39r441oo9ohhvjg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsmt4YxCMzibe385K5-k1hUB8YD3pqie4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "353303140418-uv02nl5vm20rt8a8g39r441oo9ohhvjg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "353303140418-f100sp3hp3uver0pupuo25ci1otbp26n.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.carpooling"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
